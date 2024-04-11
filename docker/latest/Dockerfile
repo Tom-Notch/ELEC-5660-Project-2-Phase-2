@@ -32,6 +32,9 @@ RUN apt install -y cmake libgoogle-glog-dev libgflags-dev libatlas-base-dev libe
 #     make install -j$(($(nproc)-1)) && \
 #     rm -rf ${HOME_FOLDER}/aruco.zip ${HOME_FOLDER}/aruco
 
+# Install dw
+RUN apt-get install -y libdw-dev
+
 # end of sudo apt installs
 RUN apt full-upgrade -y && \
     apt autoremove -y && \

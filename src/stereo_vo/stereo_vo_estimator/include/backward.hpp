@@ -327,10 +327,13 @@ extern "C" uintptr_t _Unwind_GetIPInfo(_Unwind_Context*, int*);
 #ifdef BACKWARD_ATLEAST_CXX11
 #include <unordered_map>
 #include <utility>  // for std::swap
-namespace backward {
-namespace details {
+namespace backward
+{
+namespace details
+{
 template <typename K, typename V>
-struct hashtable {
+struct hashtable
+{
   typedef std::unordered_map<K, V> type;
 };
 using std::move;
@@ -340,26 +343,33 @@ using std::move;
 #define nullptr NULL
 #define override
 #include <map>
-namespace backward {
-namespace details {
+namespace backward
+{
+namespace details
+{
 template <typename K, typename V>
-struct hashtable {
+struct hashtable
+{
   typedef std::map<K, V> type;
 };
 template <typename T>
-const T& move(const T& v) {
+const T& move(const T& v)
+{
   return v;
 }
 template <typename T>
-T& move(T& v) {
+T& move(T& v)
+{
   return v;
 }
 }  // namespace details
 }  // namespace backward
 #endif  // BACKWARD_ATLEAST_CXX11
 
-namespace backward {
-namespace system_tag {
+namespace backward
+{
+namespace system_tag
+{
 struct linux_tag;  // seems that I cannot call that "linux" because the name
 // is already defined... so I am adding _tag everywhere.
 struct darwin_tag;
@@ -376,7 +386,8 @@ typedef unknown_tag current_tag;
 #endif
 }  // namespace system_tag
 
-namespace trace_resolver_tag {
+namespace trace_resolver_tag
+{
 #if defined(BACKWARD_SYSTEM_LINUX)
 struct libdw;
 struct libbfd;
@@ -405,39 +416,48 @@ typedef backtrace_symbol current;
 #endif
 }  // namespace trace_resolver_tag
 
-namespace details {
+namespace details
+{
 template <typename T>
-struct rm_ptr {
+struct rm_ptr
+{
   typedef T type;
 };
 
 template <typename T>
-struct rm_ptr<T*> {
+struct rm_ptr<T*>
+{
   typedef T type;
 };
 
 template <typename T>
-struct rm_ptr<const T*> {
+struct rm_ptr<const T*>
+{
   typedef const T type;
 };
 
 template <typename R, typename T, R (*F)(T)>
-struct deleter {
+struct deleter
+{
   template <typename U>
-  void operator()(U& ptr) const {
+  void operator()(U& ptr) const
+  {
     (*F)(ptr);
   }
 };
 
 template <typename T>
-struct default_delete {
-  void operator()(T& ptr) const {
+struct default_delete
+{
+  void operator()(T& ptr) const
+  {
     delete ptr;
   }
 };
 
 template <typename T, typename Deleter = deleter<void, void*, &::free>>
-class handle {
+class handle
+{
   struct dummy;
   T _val;
   bool _empty;
@@ -448,83 +468,108 @@ class handle {
 #endif
 
 public:
-  ~handle() {
-    if (!_empty) {
+  ~handle()
+  {
+    if (!_empty)
+    {
       Deleter()(_val);
     }
   }
 
-  explicit handle() : _val(), _empty(true) {
+  explicit handle()
+    : _val(), _empty(true)
+  {
   }
-  explicit handle(T val) : _val(val), _empty(false) {
-    if (!_val) _empty = true;
+  explicit handle(T val)
+    : _val(val), _empty(false)
+  {
+    if (!_val)
+      _empty = true;
   }
 
 #ifdef BACKWARD_ATLEAST_CXX11
-  handle(handle&& from) : _empty(true) {
+  handle(handle&& from)
+    : _empty(true)
+  {
     swap(from);
   }
-  handle& operator=(handle&& from) {
+  handle& operator=(handle&& from)
+  {
     swap(from);
     return *this;
   }
 #else
-  explicit handle(const handle& from) : _empty(true) {
+  explicit handle(const handle& from)
+    : _empty(true)
+  {
     // some sort of poor man's move semantic.
     swap(const_cast<handle&>(from));
   }
-  handle& operator=(const handle& from) {
+  handle& operator=(const handle& from)
+  {
     // some sort of poor man's move semantic.
     swap(const_cast<handle&>(from));
     return *this;
   }
 #endif
 
-  void reset(T new_val) {
+  void reset(T new_val)
+  {
     handle tmp(new_val);
     swap(tmp);
   }
-  operator const dummy*() const {
-    if (_empty) {
+  operator const dummy*() const
+  {
+    if (_empty)
+    {
       return nullptr;
     }
     return reinterpret_cast<const dummy*>(_val);
   }
-  T get() {
+  T get()
+  {
     return _val;
   }
-  T release() {
+  T release()
+  {
     _empty = true;
     return _val;
   }
-  void swap(handle& b) {
+  void swap(handle& b)
+  {
     using std::swap;
     swap(b._val, _val);      // can throw, we are safe here.
     swap(b._empty, _empty);  // should not throw: if you cannot swap two
     // bools without throwing... It's a lost cause anyway!
   }
 
-  T operator->() {
+  T operator->()
+  {
     return _val;
   }
-  const T operator->() const {
+  const T operator->() const
+  {
     return _val;
   }
 
   typedef typename rm_ptr<T>::type& ref_t;
   typedef const typename rm_ptr<T>::type& const_ref_t;
-  ref_t operator*() {
+  ref_t operator*()
+  {
     return *_val;
   }
-  const_ref_t operator*() const {
+  const_ref_t operator*() const
+  {
     return *_val;
   }
-  ref_t operator[](size_t idx) {
+  ref_t operator[](size_t idx)
+  {
     return _val[idx];
   }
 
   // Watch out, we've got a badass over here
-  T* operator&() {
+  T* operator&()
+  {
     _empty = false;
     return &_val;
   }
@@ -532,8 +577,10 @@ public:
 
 // Default demangler implementation (do nothing).
 template <typename TAG>
-struct demangler_impl {
-  static std::string demangle(const char* funcname) {
+struct demangler_impl
+{
+  static std::string demangle(const char* funcname)
+  {
     return funcname;
   }
 };
@@ -541,15 +588,20 @@ struct demangler_impl {
 #if defined(BACKWARD_SYSTEM_LINUX) || defined(BACKWARD_SYSTEM_DARWIN)
 
 template <>
-struct demangler_impl<system_tag::current_tag> {
-  demangler_impl() : _demangle_buffer_length(0) {
+struct demangler_impl<system_tag::current_tag>
+{
+  demangler_impl()
+    : _demangle_buffer_length(0)
+  {
   }
 
-  std::string demangle(const char* funcname) {
+  std::string demangle(const char* funcname)
+  {
     using namespace details;
     char* result =
         abi::__cxa_demangle(funcname, _demangle_buffer.release(), &_demangle_buffer_length, nullptr);
-    if (result) {
+    if (result)
+    {
       _demangle_buffer.reset(result);
       return result;
     }
@@ -563,38 +615,51 @@ private:
 
 #endif  // BACKWARD_SYSTEM_LINUX || BACKWARD_SYSTEM_DARWIN
 
-struct demangler : public demangler_impl<system_tag::current_tag> {};
+struct demangler : public demangler_impl<system_tag::current_tag>
+{
+};
 
 }  // namespace details
 
 /*************** A TRACE ***************/
 
-struct Trace {
+struct Trace
+{
   void* addr;
   size_t idx;
 
-  Trace() : addr(nullptr), idx(0) {
+  Trace()
+    : addr(nullptr), idx(0)
+  {
   }
 
-  explicit Trace(void* _addr, size_t _idx) : addr(_addr), idx(_idx) {
+  explicit Trace(void* _addr, size_t _idx)
+    : addr(_addr), idx(_idx)
+  {
   }
 };
 
-struct ResolvedTrace : public Trace {
-  struct SourceLoc {
+struct ResolvedTrace : public Trace
+{
+  struct SourceLoc
+  {
     std::string function;
     std::string filename;
     unsigned line;
     unsigned col;
 
-    SourceLoc() : line(0), col(0) {
+    SourceLoc()
+      : line(0), col(0)
+    {
     }
 
-    bool operator==(const SourceLoc& b) const {
+    bool operator==(const SourceLoc& b) const
+    {
       return function == b.function && filename == b.filename && line == b.line && col == b.col;
     }
 
-    bool operator!=(const SourceLoc& b) const {
+    bool operator!=(const SourceLoc& b) const
+    {
       return !(*this == b);
     }
   };
@@ -618,9 +683,13 @@ struct ResolvedTrace : public Trace {
   typedef std::vector<SourceLoc> source_locs_t;
   source_locs_t inliners;
 
-  ResolvedTrace() : Trace() {
+  ResolvedTrace()
+    : Trace()
+  {
   }
-  ResolvedTrace(const Trace& mini_trace) : Trace(mini_trace) {
+  ResolvedTrace(const Trace& mini_trace)
+    : Trace(mini_trace)
+  {
   }
 };
 
@@ -628,63 +697,79 @@ struct ResolvedTrace : public Trace {
 
 // default implemention.
 template <typename TAG>
-class StackTraceImpl {
+class StackTraceImpl
+{
 public:
-  size_t size() const {
+  size_t size() const
+  {
     return 0;
   }
-  Trace operator[](size_t) {
+  Trace operator[](size_t)
+  {
     return Trace();
   }
-  size_t load_here(size_t = 0) {
+  size_t load_here(size_t = 0)
+  {
     return 0;
   }
-  size_t load_from(void*, size_t = 0) {
+  size_t load_from(void*, size_t = 0)
+  {
     return 0;
   }
-  size_t thread_id() const {
+  size_t thread_id() const
+  {
     return 0;
   }
-  void skip_n_firsts(size_t) {
+  void skip_n_firsts(size_t)
+  {
   }
 };
 
-class StackTraceImplBase {
+class StackTraceImplBase
+{
 public:
-  StackTraceImplBase() : _thread_id(0), _skip(0) {
+  StackTraceImplBase()
+    : _thread_id(0), _skip(0)
+  {
   }
 
-  size_t thread_id() const {
+  size_t thread_id() const
+  {
     return _thread_id;
   }
 
-  void skip_n_firsts(size_t n) {
+  void skip_n_firsts(size_t n)
+  {
     _skip = n;
   }
 
 protected:
-  void load_thread_info() {
+  void load_thread_info()
+  {
 #ifdef BACKWARD_SYSTEM_LINUX
 #ifndef __ANDROID__
     _thread_id = static_cast<size_t>(syscall(SYS_gettid));
 #else
     _thread_id = static_cast<size_t>(gettid());
 #endif
-    if (_thread_id == static_cast<size_t>(getpid())) {
+    if (_thread_id == static_cast<size_t>(getpid()))
+    {
       // If the thread is the main one, let's hide that.
       // I like to keep little secret sometimes.
       _thread_id = 0;
     }
 #elif defined(BACKWARD_SYSTEM_DARWIN)
     _thread_id = reinterpret_cast<size_t>(pthread_self());
-    if (pthread_main_np() == 1) {
+    if (pthread_main_np() == 1)
+    {
       // If the thread is the main one, let's hide that.
       _thread_id = 0;
     }
 #endif
   }
 
-  size_t skip_n_firsts() const {
+  size_t skip_n_firsts() const
+  {
     return _skip;
   }
 
@@ -693,19 +778,25 @@ private:
   size_t _skip;
 };
 
-class StackTraceImplHolder : public StackTraceImplBase {
+class StackTraceImplHolder : public StackTraceImplBase
+{
 public:
-  size_t size() const {
+  size_t size() const
+  {
     return _stacktrace.size() ? _stacktrace.size() - skip_n_firsts() : 0;
   }
-  Trace operator[](size_t idx) const {
-    if (idx >= size()) {
+  Trace operator[](size_t idx) const
+  {
+    if (idx >= size())
+    {
       return Trace();
     }
     return Trace(_stacktrace[idx + skip_n_firsts()], idx);
   }
-  void* const* begin() const {
-    if (size()) {
+  void* const* begin() const
+  {
+    if (size())
+    {
       return &_stacktrace[skip_n_firsts()];
     }
     return nullptr;
@@ -717,11 +808,14 @@ protected:
 
 #if BACKWARD_HAS_UNWIND == 1
 
-namespace details {
+namespace details
+{
 template <typename F>
-class Unwinder {
+class Unwinder
+{
 public:
-  size_t operator()(F& f, size_t depth) {
+  size_t operator()(F& f, size_t depth)
+  {
     _f = &f;
     _index = -1;
     _depth = depth;
@@ -734,29 +828,37 @@ private:
   ssize_t _index;
   size_t _depth;
 
-  static _Unwind_Reason_Code backtrace_trampoline(_Unwind_Context* ctx, void* self) {
+  static _Unwind_Reason_Code backtrace_trampoline(_Unwind_Context* ctx, void* self)
+  {
     return (static_cast<Unwinder*>(self))->backtrace(ctx);
   }
 
-  _Unwind_Reason_Code backtrace(_Unwind_Context* ctx) {
-    if (_index >= 0 && static_cast<size_t>(_index) >= _depth) return _URC_END_OF_STACK;
+  _Unwind_Reason_Code backtrace(_Unwind_Context* ctx)
+  {
+    if (_index >= 0 && static_cast<size_t>(_index) >= _depth)
+      return _URC_END_OF_STACK;
 
     int ip_before_instruction = 0;
     uintptr_t ip = _Unwind_GetIPInfo(ctx, &ip_before_instruction);
 
-    if (!ip_before_instruction) {
+    if (!ip_before_instruction)
+    {
       // calculating 0-1 for unsigned, looks like a possible bug to sanitiziers,
       // so let's do it explicitly:
-      if (ip == 0) {
+      if (ip == 0)
+      {
         ip = std::numeric_limits<uintptr_t>::max();  // set it to 0xffff... (as
                                                      // from casting 0-1)
-      } else {
+      }
+      else
+      {
         ip -= 1;  // else just normally decrement it (no overflow/underflow will
                   // happen)
       }
     }
 
-    if (_index >= 0) {  // ignore first frame.
+    if (_index >= 0)
+    {  // ignore first frame.
       (*_f)(static_cast<size_t>(_index), reinterpret_cast<void*>(ip));
     }
     _index += 1;
@@ -765,7 +867,8 @@ private:
 };
 
 template <typename F>
-size_t unwind(F f, size_t depth) {
+size_t unwind(F f, size_t depth)
+{
   Unwinder<F> unwinder;
   return unwinder(f, depth);
 }
@@ -773,13 +876,16 @@ size_t unwind(F f, size_t depth) {
 }  // namespace details
 
 template <>
-class StackTraceImpl<system_tag::current_tag> : public StackTraceImplHolder {
+class StackTraceImpl<system_tag::current_tag> : public StackTraceImplHolder
+{
 public:
   __attribute__((noinline))  // TODO use some macro
   size_t
-  load_here(size_t depth = 32) {
+  load_here(size_t depth = 32)
+  {
     load_thread_info();
-    if (depth == 0) {
+    if (depth == 0)
+    {
       return 0;
     }
     _stacktrace.resize(depth);
@@ -788,11 +894,14 @@ public:
     skip_n_firsts(0);
     return size();
   }
-  size_t load_from(void* addr, size_t depth = 32) {
+  size_t load_from(void* addr, size_t depth = 32)
+  {
     load_here(depth + 8);
 
-    for (size_t i = 0; i < _stacktrace.size(); ++i) {
-      if (_stacktrace[i] == addr) {
+    for (size_t i = 0; i < _stacktrace.size(); ++i)
+    {
+      if (_stacktrace[i] == addr)
+      {
         skip_n_firsts(i);
         break;
       }
@@ -803,12 +912,16 @@ public:
   }
 
 private:
-  struct callback {
+  struct callback
+  {
     StackTraceImpl& self;
-    callback(StackTraceImpl& _self) : self(_self) {
+    callback(StackTraceImpl& _self)
+      : self(_self)
+    {
     }
 
-    void operator()(size_t idx, void* addr) {
+    void operator()(size_t idx, void* addr)
+    {
       self._stacktrace[idx] = addr;
     }
   };
@@ -817,13 +930,16 @@ private:
 #else  // BACKWARD_HAS_UNWIND == 0
 
 template <>
-class StackTraceImpl<system_tag::current_tag> : public StackTraceImplHolder {
+class StackTraceImpl<system_tag::current_tag> : public StackTraceImplHolder
+{
 public:
   __attribute__((noinline))  // TODO use some macro
   size_t
-  load_here(size_t depth = 32) {
+  load_here(size_t depth = 32)
+  {
     load_thread_info();
-    if (depth == 0) {
+    if (depth == 0)
+    {
       return 0;
     }
     _stacktrace.resize(depth + 1);
@@ -833,11 +949,14 @@ public:
     return size();
   }
 
-  size_t load_from(void* addr, size_t depth = 32) {
+  size_t load_from(void* addr, size_t depth = 32)
+  {
     load_here(depth + 8);
 
-    for (size_t i = 0; i < _stacktrace.size(); ++i) {
-      if (_stacktrace[i] == addr) {
+    for (size_t i = 0; i < _stacktrace.size(); ++i)
+    {
+      if (_stacktrace[i] == addr)
+      {
         skip_n_firsts(i);
         _stacktrace[i] = (void*)((uintptr_t)_stacktrace[i] + 1);
         break;
@@ -851,7 +970,9 @@ public:
 
 #endif  // BACKWARD_HAS_UNWIND
 
-class StackTrace : public StackTraceImpl<system_tag::current_tag> {};
+class StackTrace : public StackTraceImpl<system_tag::current_tag>
+{
+};
 
 /*************** TRACE RESOLVER ***************/
 
@@ -861,21 +982,26 @@ class TraceResolverImpl;
 #ifdef BACKWARD_SYSTEM_UNKNOWN
 
 template <>
-class TraceResolverImpl<system_tag::unknown_tag> {
+class TraceResolverImpl<system_tag::unknown_tag>
+{
 public:
   template <class ST>
-  void load_stacktrace(ST&) {
+  void load_stacktrace(ST&)
+  {
   }
-  ResolvedTrace resolve(ResolvedTrace t) {
+  ResolvedTrace resolve(ResolvedTrace t)
+  {
     return t;
   }
 };
 
 #endif
 
-class TraceResolverImplBase {
+class TraceResolverImplBase
+{
 protected:
-  std::string demangle(const char* funcname) {
+  std::string demangle(const char* funcname)
+  {
     return _demangler.demangle(funcname);
   }
 
@@ -891,30 +1017,37 @@ class TraceResolverLinuxImpl;
 #if BACKWARD_HAS_BACKTRACE_SYMBOL == 1
 
 template <>
-class TraceResolverLinuxImpl<trace_resolver_tag::backtrace_symbol> : public TraceResolverImplBase {
+class TraceResolverLinuxImpl<trace_resolver_tag::backtrace_symbol> : public TraceResolverImplBase
+{
 public:
   template <class ST>
-  void load_stacktrace(ST& st) {
+  void load_stacktrace(ST& st)
+  {
     using namespace details;
-    if (st.size() == 0) {
+    if (st.size() == 0)
+    {
       return;
     }
     _symbols.reset(backtrace_symbols(st.begin(), (int)st.size()));
   }
 
-  ResolvedTrace resolve(ResolvedTrace trace) {
+  ResolvedTrace resolve(ResolvedTrace trace)
+  {
     char* filename = _symbols[trace.idx];
     char* funcname = filename;
-    while (*funcname && *funcname != '(') {
+    while (*funcname && *funcname != '(')
+    {
       funcname += 1;
     }
     trace.object_filename.assign(filename, funcname);  // ok even if funcname is the ending
                                                        // \0 (then we assign entire string)
 
-    if (*funcname) {  // if it's not end of string (e.g. from last frame ip==0)
+    if (*funcname)
+    {  // if it's not end of string (e.g. from last frame ip==0)
       funcname += 1;
       char* funcname_end = funcname;
-      while (*funcname_end && *funcname_end != ')' && *funcname_end != '+') {
+      while (*funcname_end && *funcname_end != ')' && *funcname_end != '+')
+      {
         funcname_end += 1;
       }
       *funcname_end = '\0';
@@ -933,19 +1066,26 @@ private:
 #if BACKWARD_HAS_BFD == 1
 
 template <>
-class TraceResolverLinuxImpl<trace_resolver_tag::libbfd> : public TraceResolverImplBase {
-  static std::string read_symlink(std::string const& symlink_path) {
+class TraceResolverLinuxImpl<trace_resolver_tag::libbfd> : public TraceResolverImplBase
+{
+  static std::string read_symlink(std::string const& symlink_path)
+  {
     std::string path;
     path.resize(100);
 
-    while (true) {
+    while (true)
+    {
       ssize_t len = ::readlink(symlink_path.c_str(), &*path.begin(), path.size());
-      if (len < 0) {
+      if (len < 0)
+      {
         return "";
       }
-      if (static_cast<size_t>(len) == path.size()) {
+      if (static_cast<size_t>(len) == path.size())
+      {
         path.resize(path.size() * 2);
-      } else {
+      }
+      else
+      {
         path.resize(static_cast<std::string::size_type>(len));
         break;
       }
@@ -955,20 +1095,25 @@ class TraceResolverLinuxImpl<trace_resolver_tag::libbfd> : public TraceResolverI
   }
 
 public:
-  TraceResolverLinuxImpl() : _bfd_loaded(false) {
+  TraceResolverLinuxImpl()
+    : _bfd_loaded(false)
+  {
   }
 
   template <class ST>
-  void load_stacktrace(ST&) {
+  void load_stacktrace(ST&)
+  {
   }
 
-  ResolvedTrace resolve(ResolvedTrace trace) {
+  ResolvedTrace resolve(ResolvedTrace trace)
+  {
     Dl_info symbol_info;
 
     // trace.addr is a virtual address in memory pointing to some code.
     // Let's try to find from which loaded object it comes from.
     // The loaded object can be yourself btw.
-    if (!dladdr(trace.addr, &symbol_info)) {
+    if (!dladdr(trace.addr, &symbol_info))
+    {
       return trace;  // dat broken trace...
     }
 
@@ -978,7 +1123,8 @@ public:
       std::getline(ifs, argv0, '\0');
     }
     std::string tmp;
-    if (symbol_info.dli_fname == argv0) {
+    if (symbol_info.dli_fname == argv0)
+    {
       tmp = read_symlink("/proc/self/exe");
       symbol_info.dli_fname = tmp.c_str();
     }
@@ -994,17 +1140,20 @@ public:
     // .dli_saddr:
     //		the exact address corresponding to .dli_sname.
 
-    if (symbol_info.dli_sname) {
+    if (symbol_info.dli_sname)
+    {
       trace.object_function = demangle(symbol_info.dli_sname);
     }
 
-    if (!symbol_info.dli_fname) {
+    if (!symbol_info.dli_fname)
+    {
       return trace;
     }
 
     trace.object_filename = symbol_info.dli_fname;
     bfd_fileobject& fobj = load_object_with_bfd(symbol_info.dli_fname);
-    if (!fobj.handle) {
+    if (!fobj.handle)
+    {
       return trace;  // sad, we couldn't load the object :(
     }
 
@@ -1030,13 +1179,15 @@ public:
         find_symbol_details(fobj, (void*)(uintptr_t(trace.addr) - 1), symbol_info.dli_fbase);
 
     // In debug mode, we should always get the right thing(TM).
-    if (details_call_site.found && details_adjusted_call_site.found) {
+    if (details_call_site.found && details_adjusted_call_site.found)
+    {
       // Ok, we assume that details_adjusted_call_site is a better estimation.
       details_selected = &details_adjusted_call_site;
       trace.addr = (void*)(uintptr_t(trace.addr) - 1);
     }
 
-    if (details_selected == &details_call_site && details_call_site.found) {
+    if (details_selected == &details_call_site && details_call_site.found)
+    {
       // we have to re-resolve the symbol in order to reset some
       // internal state in BFD... so we can call backtrace_inliners
       // thereafter...
@@ -1044,13 +1195,16 @@ public:
     }
 #endif  // BACKWARD_HAS_UNWIND
 
-    if (details_selected->found) {
-      if (details_selected->filename) {
+    if (details_selected->found)
+    {
+      if (details_selected->filename)
+      {
         trace.source.filename = details_selected->filename;
       }
       trace.source.line = details_selected->line;
 
-      if (details_selected->funcname) {
+      if (details_selected->funcname)
+      {
         // this time we get the name of the function where the code is
         // located, instead of the function were the address is
         // located. In short, if the code was inlined, we get the
@@ -1058,7 +1212,8 @@ public:
         // trace.function.
         trace.source.function = demangle(details_selected->funcname);
 
-        if (!symbol_info.dli_sname) {
+        if (!symbol_info.dli_sname)
+        {
           // for the case dladdr failed to find the symbol name of
           // the function, we might as well try to put something
           // here.
@@ -1126,7 +1281,8 @@ private:
 
   typedef details::handle<asymbol**> bfd_symtab_t;
 
-  struct bfd_fileobject {
+  struct bfd_fileobject
+  {
     bfd_handle_t handle;
     bfd_vma base_addr;
     bfd_symtab_t symtab;
@@ -1136,17 +1292,20 @@ private:
   typedef details::hashtable<std::string, bfd_fileobject>::type fobj_bfd_map_t;
   fobj_bfd_map_t _fobj_bfd_map;
 
-  bfd_fileobject& load_object_with_bfd(const std::string& filename_object) {
+  bfd_fileobject& load_object_with_bfd(const std::string& filename_object)
+  {
     using namespace details;
 
-    if (!_bfd_loaded) {
+    if (!_bfd_loaded)
+    {
       using namespace details;
       bfd_init();
       _bfd_loaded = true;
     }
 
     fobj_bfd_map_t::iterator it = _fobj_bfd_map.find(filename_object);
-    if (it != _fobj_bfd_map.end()) {
+    if (it != _fobj_bfd_map.end())
+    {
       return it->second;
     }
 
@@ -1158,16 +1317,19 @@ private:
 
     int fd = open(filename_object.c_str(), O_RDONLY);
     bfd_handle.reset(bfd_fdopenr(filename_object.c_str(), "default", fd));
-    if (!bfd_handle) {
+    if (!bfd_handle)
+    {
       close(fd);
       return r;
     }
 
-    if (!bfd_check_format(bfd_handle.get(), bfd_object)) {
+    if (!bfd_check_format(bfd_handle.get(), bfd_object))
+    {
       return r;  // not an object? You lose.
     }
 
-    if ((bfd_get_file_flags(bfd_handle.get()) & HAS_SYMS) == 0) {
+    if ((bfd_get_file_flags(bfd_handle.get()) & HAS_SYMS) == 0)
+    {
       return r;  // that's what happen when you forget to compile in debug.
     }
 
@@ -1175,25 +1337,29 @@ private:
 
     ssize_t dyn_symtab_storage_size = bfd_get_dynamic_symtab_upper_bound(bfd_handle.get());
 
-    if (symtab_storage_size <= 0 && dyn_symtab_storage_size <= 0) {
+    if (symtab_storage_size <= 0 && dyn_symtab_storage_size <= 0)
+    {
       return r;  // weird, is the file is corrupted?
     }
 
     bfd_symtab_t symtab, dynamic_symtab;
     ssize_t symcount = 0, dyn_symcount = 0;
 
-    if (symtab_storage_size > 0) {
+    if (symtab_storage_size > 0)
+    {
       symtab.reset(static_cast<bfd_symbol**>(malloc(static_cast<size_t>(symtab_storage_size))));
       symcount = bfd_canonicalize_symtab(bfd_handle.get(), symtab.get());
     }
 
-    if (dyn_symtab_storage_size > 0) {
+    if (dyn_symtab_storage_size > 0)
+    {
       dynamic_symtab.reset(
           static_cast<bfd_symbol**>(malloc(static_cast<size_t>(dyn_symtab_storage_size))));
       dyn_symcount = bfd_canonicalize_dynamic_symtab(bfd_handle.get(), dynamic_symtab.get());
     }
 
-    if (symcount <= 0 && dyn_symcount <= 0) {
+    if (symcount <= 0 && dyn_symcount <= 0)
+    {
       return r;  // damned, that's a stripped file that you got there!
     }
 
@@ -1203,14 +1369,16 @@ private:
     return r;
   }
 
-  struct find_sym_result {
+  struct find_sym_result
+  {
     bool found;
     const char* filename;
     const char* funcname;
     unsigned int line;
   };
 
-  struct find_sym_context {
+  struct find_sym_context
+  {
     TraceResolverLinuxImpl* self;
     bfd_fileobject* fobj;
     void* addr;
@@ -1218,7 +1386,8 @@ private:
     find_sym_result result;
   };
 
-  find_sym_result find_symbol_details(bfd_fileobject& fobj, void* addr, void* base_addr) {
+  find_sym_result find_symbol_details(bfd_fileobject& fobj, void* addr, void* base_addr)
+  {
     find_sym_context context;
     context.self = this;
     context.fobj = &fobj;
@@ -1229,7 +1398,8 @@ private:
     return context.result;
   }
 
-  static void find_in_section_trampoline(bfd*, asection* section, void* data) {
+  static void find_in_section_trampoline(bfd*, asection* section, void* data)
+  {
     find_sym_context* context = static_cast<find_sym_context*>(data);
     context->self->find_in_section(reinterpret_cast<bfd_vma>(context->addr),
                                    reinterpret_cast<bfd_vma>(context->base_addr), *context->fobj,
@@ -1237,8 +1407,10 @@ private:
   }
 
   void find_in_section(bfd_vma addr, bfd_vma base_addr, bfd_fileobject& fobj, asection* section,
-                       find_sym_result& result) {
-    if (result.found) return;
+                       find_sym_result& result)
+  {
+    if (result.found)
+      return;
 
     if ((bfd_get_section_flags(fobj.handle.get(), section) & SEC_ALLOC) == 0)
       return;  // a debug section is never loaded automatically.
@@ -1247,9 +1419,11 @@ private:
     bfd_size_type size = bfd_get_section_size(section);
 
     // are we in the boundaries of the section?
-    if (addr < sec_addr || addr >= sec_addr + size) {
+    if (addr < sec_addr || addr >= sec_addr + size)
+    {
       addr -= base_addr;  // oups, a relocated object, lets try again...
-      if (addr < sec_addr || addr >= sec_addr + size) {
+      if (addr < sec_addr || addr >= sec_addr + size)
+      {
         return;
       }
     }
@@ -1258,13 +1432,15 @@ private:
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant"
 #endif
-    if (!result.found && fobj.symtab) {
+    if (!result.found && fobj.symtab)
+    {
       result.found =
           bfd_find_nearest_line(fobj.handle.get(), section, fobj.symtab.get(), addr - sec_addr,
                                 &result.filename, &result.funcname, &result.line);
     }
 
-    if (!result.found && fobj.dynamic_symtab) {
+    if (!result.found && fobj.dynamic_symtab)
+    {
       result.found =
           bfd_find_nearest_line(fobj.handle.get(), section, fobj.dynamic_symtab.get(), addr - sec_addr,
                                 &result.filename, &result.funcname, &result.line);
@@ -1275,11 +1451,13 @@ private:
   }
 
   ResolvedTrace::source_locs_t backtrace_inliners(bfd_fileobject& fobj,
-                                                  find_sym_result previous_result) {
+                                                  find_sym_result previous_result)
+  {
     // This function can be called ONLY after a SUCCESSFUL call to
     // find_symbol_details. The state is global to the bfd_handle.
     ResolvedTrace::source_locs_t results;
-    while (previous_result.found) {
+    while (previous_result.found)
+    {
       find_sym_result result;
       result.found =
           bfd_find_inliner_info(fobj.handle.get(), &result.filename, &result.funcname, &result.line);
@@ -1292,10 +1470,12 @@ private:
       {
         ResolvedTrace::SourceLoc src_loc;
         src_loc.line = result.line;
-        if (result.filename) {
+        if (result.filename)
+        {
           src_loc.filename = result.filename;
         }
-        if (result.funcname) {
+        if (result.funcname)
+        {
           src_loc.function = demangle(result.funcname);
         }
         results.push_back(src_loc);
@@ -1305,8 +1485,10 @@ private:
     return results;
   }
 
-  bool cstrings_eq(const char* a, const char* b) {
-    if (!a || !b) {
+  bool cstrings_eq(const char* a, const char* b)
+  {
+    if (!a || !b)
+    {
       return false;
     }
     return strcmp(a, b) == 0;
@@ -1317,21 +1499,27 @@ private:
 #if BACKWARD_HAS_DW == 1
 
 template <>
-class TraceResolverLinuxImpl<trace_resolver_tag::libdw> : public TraceResolverImplBase {
+class TraceResolverLinuxImpl<trace_resolver_tag::libdw> : public TraceResolverImplBase
+{
 public:
-  TraceResolverLinuxImpl() : _dwfl_handle_initialized(false) {
+  TraceResolverLinuxImpl()
+    : _dwfl_handle_initialized(false)
+  {
   }
 
   template <class ST>
-  void load_stacktrace(ST&) {
+  void load_stacktrace(ST&)
+  {
   }
 
-  ResolvedTrace resolve(ResolvedTrace trace) {
+  ResolvedTrace resolve(ResolvedTrace trace)
+  {
     using namespace details;
 
     Dwarf_Addr trace_addr = (Dwarf_Addr)trace.addr;
 
-    if (!_dwfl_handle_initialized) {
+    if (!_dwfl_handle_initialized)
+    {
       // initialize dwfl...
       _dwfl_cb.reset(new Dwfl_Callbacks);
       _dwfl_cb->find_elf = &dwfl_linux_proc_find_elf;
@@ -1341,7 +1529,8 @@ public:
       _dwfl_handle.reset(dwfl_begin(_dwfl_cb.get()));
       _dwfl_handle_initialized = true;
 
-      if (!_dwfl_handle) {
+      if (!_dwfl_handle)
+      {
         return trace;
       }
 
@@ -1349,12 +1538,14 @@ public:
       dwfl_report_begin(_dwfl_handle.get());
       int r = dwfl_linux_proc_report(_dwfl_handle.get(), getpid());
       dwfl_report_end(_dwfl_handle.get(), NULL, NULL);
-      if (r < 0) {
+      if (r < 0)
+      {
         return trace;
       }
     }
 
-    if (!_dwfl_handle) {
+    if (!_dwfl_handle)
+    {
       return trace;
     }
 
@@ -1362,11 +1553,13 @@ public:
     // This is not using any debug information, but the addresses ranges of
     // all the currently loaded binary object.
     Dwfl_Module* mod = dwfl_addrmodule(_dwfl_handle.get(), trace_addr);
-    if (mod) {
+    if (mod)
+    {
       // now that we found it, lets get the name of it, this will be the
       // full path to the running binary or one of the loaded library.
       const char* module_name = dwfl_module_info(mod, 0, 0, 0, 0, 0, 0, 0);
-      if (module_name) {
+      if (module_name)
+      {
         trace.object_filename = module_name;
       }
       // We also look after the name of the symbol, equal or before this
@@ -1375,7 +1568,8 @@ public:
       // address. If the code corresponding to the address was inlined,
       // this is the name of the out-most inliner function.
       const char* sym_name = dwfl_module_addrname(mod, trace_addr);
-      if (sym_name) {
+      if (sym_name)
+      {
         trace.object_function = demangle(sym_name);
       }
     }
@@ -1390,7 +1584,8 @@ public:
     Dwarf_Die* cudie = dwfl_module_addrdie(mod, trace_addr, &mod_bias);
 
 #if 1
-    if (!cudie) {
+    if (!cudie)
+    {
       // Sadly clang does not generate the section .debug_aranges, thus
       // dwfl_module_addrdie will fail early. Clang doesn't either set
       // the lowpc/highpc/range info for every compilation unit.
@@ -1401,19 +1596,22 @@ public:
       // we will use to infer the compilation unit.
 
       // note that this is probably badly inefficient.
-      while ((cudie = dwfl_module_nextcu(mod, cudie, &mod_bias))) {
+      while ((cudie = dwfl_module_nextcu(mod, cudie, &mod_bias)))
+      {
         Dwarf_Die die_mem;
         Dwarf_Die* fundie = find_fundie_by_pc(cudie, trace_addr - mod_bias, &die_mem);
-        if (fundie) {
+        if (fundie)
+        {
           break;
         }
       }
     }
 #endif
 
-//#define BACKWARD_I_DO_NOT_RECOMMEND_TO_ENABLE_THIS_HORRIBLE_PIECE_OF_CODE
+// #define BACKWARD_I_DO_NOT_RECOMMEND_TO_ENABLE_THIS_HORRIBLE_PIECE_OF_CODE
 #ifdef BACKWARD_I_DO_NOT_RECOMMEND_TO_ENABLE_THIS_HORRIBLE_PIECE_OF_CODE
-    if (!cudie) {
+    if (!cudie)
+    {
       // If it's still not enough, lets dive deeper in the shit, and try
       // to save the world again: for every compilation unit, we will
       // load the corresponding .debug_line section, and see if we can
@@ -1423,8 +1621,10 @@ public:
       Dwarf_CFI* cfi_cache = dwfl_module_eh_cfi(mod, &cfi_bias);
 
       Dwarf_Addr bias;
-      while ((cudie = dwfl_module_nextcu(mod, cudie, &bias))) {
-        if (dwarf_getsrc_die(cudie, trace_addr - bias)) {
+      while ((cudie = dwfl_module_nextcu(mod, cudie, &bias)))
+      {
+        if (dwarf_getsrc_die(cudie, trace_addr - bias))
+        {
           // ...but if we get a match, it might be a false positive
           // because our (address - bias) might as well be valid in a
           // different compilation unit. So we throw our last card on
@@ -1433,7 +1633,8 @@ public:
 
           handle<Dwarf_Frame*> frame;
           dwarf_cfi_addrframe(cfi_cache, trace_addr - cfi_bias, &frame);
-          if (frame) {
+          if (frame)
+          {
             break;
           }
         }
@@ -1441,7 +1642,8 @@ public:
     }
 #endif
 
-    if (!cudie) {
+    if (!cudie)
+    {
       return trace;  // this time we lost the game :/
     }
 
@@ -1451,9 +1653,11 @@ public:
     // address.
     Dwarf_Line* srcloc = dwarf_getsrc_die(cudie, trace_addr - mod_bias);
 
-    if (srcloc) {
+    if (srcloc)
+    {
       const char* srcfile = dwarf_linesrc(srcloc, 0, 0);
-      if (srcfile) {
+      if (srcfile)
+      {
         trace.source.filename = srcfile;
       }
       int line = 0, col = 0;
@@ -1464,7 +1668,8 @@ public:
     }
 
     deep_first_search_by_pc(cudie, trace_addr - mod_bias, inliners_search_cb(trace));
-    if (trace.source.function.size() == 0) {
+    if (trace.source.function.size() == 0)
+    {
       // fallback.
       trace.source.function = trace.object_function;
     }
@@ -1480,12 +1685,16 @@ private:
 
   // defined here because in C++98, template function cannot take locally
   // defined types... grrr.
-  struct inliners_search_cb {
-    void operator()(Dwarf_Die* die) {
-      switch (dwarf_tag(die)) {
+  struct inliners_search_cb
+  {
+    void operator()(Dwarf_Die* die)
+    {
+      switch (dwarf_tag(die))
+      {
         const char* name;
         case DW_TAG_subprogram:
-          if ((name = dwarf_diename(die))) {
+          if ((name = dwarf_diename(die)))
+          {
             trace.source.function = name;
           }
           break;
@@ -1494,10 +1703,12 @@ private:
           ResolvedTrace::SourceLoc sloc;
           Dwarf_Attribute attr_mem;
 
-          if ((name = dwarf_diename(die))) {
+          if ((name = dwarf_diename(die)))
+          {
             sloc.function = name;
           }
-          if ((name = die_call_file(die))) {
+          if ((name = die_call_file(die)))
+          {
             sloc.filename = name;
           }
 
@@ -1512,23 +1723,30 @@ private:
       };
     }
     ResolvedTrace& trace;
-    inliners_search_cb(ResolvedTrace& t) : trace(t) {
+    inliners_search_cb(ResolvedTrace& t)
+      : trace(t)
+    {
     }
   };
 
-  static bool die_has_pc(Dwarf_Die* die, Dwarf_Addr pc) {
+  static bool die_has_pc(Dwarf_Die* die, Dwarf_Addr pc)
+  {
     Dwarf_Addr low, high;
 
     // continuous range
-    if (dwarf_hasattr(die, DW_AT_low_pc) && dwarf_hasattr(die, DW_AT_high_pc)) {
-      if (dwarf_lowpc(die, &low) != 0) {
+    if (dwarf_hasattr(die, DW_AT_low_pc) && dwarf_hasattr(die, DW_AT_high_pc))
+    {
+      if (dwarf_lowpc(die, &low) != 0)
+      {
         return false;
       }
-      if (dwarf_highpc(die, &high) != 0) {
+      if (dwarf_highpc(die, &high) != 0)
+      {
         Dwarf_Attribute attr_mem;
         Dwarf_Attribute* attr = dwarf_attr(die, DW_AT_high_pc, &attr_mem);
         Dwarf_Word value;
-        if (dwarf_formudata(attr, &value) != 0) {
+        if (dwarf_formudata(attr, &value) != 0)
+        {
           return false;
         }
         high = low + value;
@@ -1539,38 +1757,47 @@ private:
     // non-continuous range.
     Dwarf_Addr base;
     ptrdiff_t offset = 0;
-    while ((offset = dwarf_ranges(die, offset, &base, &low, &high)) > 0) {
-      if (pc >= low && pc < high) {
+    while ((offset = dwarf_ranges(die, offset, &base, &low, &high)) > 0)
+    {
+      if (pc >= low && pc < high)
+      {
         return true;
       }
     }
     return false;
   }
 
-  static Dwarf_Die* find_fundie_by_pc(Dwarf_Die* parent_die, Dwarf_Addr pc, Dwarf_Die* result) {
-    if (dwarf_child(parent_die, result) != 0) {
+  static Dwarf_Die* find_fundie_by_pc(Dwarf_Die* parent_die, Dwarf_Addr pc, Dwarf_Die* result)
+  {
+    if (dwarf_child(parent_die, result) != 0)
+    {
       return 0;
     }
 
     Dwarf_Die* die = result;
-    do {
-      switch (dwarf_tag(die)) {
+    do
+    {
+      switch (dwarf_tag(die))
+      {
         case DW_TAG_subprogram:
         case DW_TAG_inlined_subroutine:
-          if (die_has_pc(die, pc)) {
+          if (die_has_pc(die, pc))
+          {
             return result;
           }
       };
       bool declaration = false;
       Dwarf_Attribute attr_mem;
       dwarf_formflag(dwarf_attr(die, DW_AT_declaration, &attr_mem), &declaration);
-      if (!declaration) {
+      if (!declaration)
+      {
         // let's be curious and look deeper in the tree,
         // function are not necessarily at the first level, but
         // might be nested inside a namespace, structure etc.
         Dwarf_Die die_mem;
         Dwarf_Die* indie = find_fundie_by_pc(die, pc, &die_mem);
-        if (indie) {
+        if (indie)
+        {
           *result = die_mem;
           return result;
         }
@@ -1580,55 +1807,65 @@ private:
   }
 
   template <typename CB>
-  static bool deep_first_search_by_pc(Dwarf_Die* parent_die, Dwarf_Addr pc, CB cb) {
+  static bool deep_first_search_by_pc(Dwarf_Die* parent_die, Dwarf_Addr pc, CB cb)
+  {
     Dwarf_Die die_mem;
-    if (dwarf_child(parent_die, &die_mem) != 0) {
+    if (dwarf_child(parent_die, &die_mem) != 0)
+    {
       return false;
     }
 
     bool branch_has_pc = false;
     Dwarf_Die* die = &die_mem;
-    do {
+    do
+    {
       bool declaration = false;
       Dwarf_Attribute attr_mem;
       dwarf_formflag(dwarf_attr(die, DW_AT_declaration, &attr_mem), &declaration);
-      if (!declaration) {
+      if (!declaration)
+      {
         // let's be curious and look deeper in the tree, function are
         // not necessarily at the first level, but might be nested
         // inside a namespace, structure, a function, an inlined
         // function etc.
         branch_has_pc = deep_first_search_by_pc(die, pc, cb);
       }
-      if (!branch_has_pc) {
+      if (!branch_has_pc)
+      {
         branch_has_pc = die_has_pc(die, pc);
       }
-      if (branch_has_pc) {
+      if (branch_has_pc)
+      {
         cb(die);
       }
     } while (dwarf_siblingof(die, &die_mem) == 0);
     return branch_has_pc;
   }
 
-  static const char* die_call_file(Dwarf_Die* die) {
+  static const char* die_call_file(Dwarf_Die* die)
+  {
     Dwarf_Attribute attr_mem;
     Dwarf_Sword file_idx = 0;
 
     dwarf_formsdata(dwarf_attr(die, DW_AT_call_file, &attr_mem), &file_idx);
 
-    if (file_idx == 0) {
+    if (file_idx == 0)
+    {
       return 0;
     }
 
     Dwarf_Die die_mem;
     Dwarf_Die* cudie = dwarf_diecu(die, &die_mem, 0, 0);
-    if (!cudie) {
+    if (!cudie)
+    {
       return 0;
     }
 
     Dwarf_Files* files = 0;
     size_t nfiles;
     dwarf_getsrcfiles(cudie, &files, &nfiles);
-    if (!files) {
+    if (!files)
+    {
       return 0;
     }
 
@@ -1640,19 +1877,26 @@ private:
 #if BACKWARD_HAS_DWARF == 1
 
 template <>
-class TraceResolverLinuxImpl<trace_resolver_tag::libdwarf> : public TraceResolverImplBase {
-  static std::string read_symlink(std::string const& symlink_path) {
+class TraceResolverLinuxImpl<trace_resolver_tag::libdwarf> : public TraceResolverImplBase
+{
+  static std::string read_symlink(std::string const& symlink_path)
+  {
     std::string path;
     path.resize(100);
 
-    while (true) {
+    while (true)
+    {
       ssize_t len = ::readlink(symlink_path.c_str(), &*path.begin(), path.size());
-      if (len < 0) {
+      if (len < 0)
+      {
         return "";
       }
-      if ((size_t)len == path.size()) {
+      if ((size_t)len == path.size())
+      {
         path.resize(path.size() * 2);
-      } else {
+      }
+      else
+      {
         path.resize(len);
         break;
       }
@@ -1662,14 +1906,18 @@ class TraceResolverLinuxImpl<trace_resolver_tag::libdwarf> : public TraceResolve
   }
 
 public:
-  TraceResolverLinuxImpl() : _dwarf_loaded(false) {
+  TraceResolverLinuxImpl()
+    : _dwarf_loaded(false)
+  {
   }
 
   template <class ST>
-  void load_stacktrace(ST&) {
+  void load_stacktrace(ST&)
+  {
   }
 
-  ResolvedTrace resolve(ResolvedTrace trace) {
+  ResolvedTrace resolve(ResolvedTrace trace)
+  {
     // trace.addr is a virtual address in memory pointing to some code.
     // Let's try to find from which loaded object it comes from.
     // The loaded object can be yourself btw.
@@ -1685,7 +1933,8 @@ public:
     // Android doesn't have dladdr1. Don't use the linker map.
     dladdr_result = dladdr(trace.addr, &symbol_info);
 #endif
-    if (!dladdr_result) {
+    if (!dladdr_result)
+    {
       return trace;  // dat broken trace...
     }
 
@@ -1695,7 +1944,8 @@ public:
       std::getline(ifs, argv0, '\0');
     }
     std::string tmp;
-    if (symbol_info.dli_fname == argv0) {
+    if (symbol_info.dli_fname == argv0)
+    {
       tmp = read_symlink("/proc/self/exe");
       symbol_info.dli_fname = tmp.c_str();
     }
@@ -1718,17 +1968,20 @@ public:
     // l_name:
     //      absolute pathname where the object was found
 
-    if (symbol_info.dli_sname) {
+    if (symbol_info.dli_sname)
+    {
       trace.object_function = demangle(symbol_info.dli_sname);
     }
 
-    if (!symbol_info.dli_fname) {
+    if (!symbol_info.dli_fname)
+    {
       return trace;
     }
 
     trace.object_filename = symbol_info.dli_fname;
     dwarf_fileobject& fobj = load_object_with_dwarf(symbol_info.dli_fname);
-    if (!fobj.dwarf_handle) {
+    if (!fobj.dwarf_handle)
+    {
       return trace;  // sad, we couldn't load the object :(
     }
 
@@ -1741,12 +1994,16 @@ public:
     Dwarf_Addr address = reinterpret_cast<uintptr_t>(trace.addr);
 #endif
 
-    if (trace.object_function.empty()) {
+    if (trace.object_function.empty())
+    {
       symbol_cache_t::iterator it = fobj.symbol_cache.lower_bound(address);
 
-      if (it != fobj.symbol_cache.end()) {
-        if (it->first != address) {
-          if (it != fobj.symbol_cache.begin()) {
+      if (it != fobj.symbol_cache.end())
+      {
+        if (it->first != address)
+        {
+          if (it != fobj.symbol_cache.begin())
+          {
             --it;
           }
         }
@@ -1757,7 +2014,8 @@ public:
     // Get the Compilation Unit DIE for the address
     Dwarf_Die die = find_die(fobj, address);
 
-    if (!die) {
+    if (!die)
+    {
       return trace;  // this time we lost the game :/
     }
 
@@ -1765,22 +2023,30 @@ public:
     // allocates a copy for the caller. We keep that copy alive in a cache
     // and we deallocate it later when it's no longer required.
     die_cache_entry& die_object = get_die_cache(fobj, die);
-    if (die_object.isEmpty()) return trace;  // We have no line section for this DIE
+    if (die_object.isEmpty())
+      return trace;  // We have no line section for this DIE
 
     die_linemap_t::iterator it = die_object.line_section.lower_bound(address);
 
-    if (it != die_object.line_section.end()) {
-      if (it->first != address) {
-        if (it == die_object.line_section.begin()) {
+    if (it != die_object.line_section.end())
+    {
+      if (it->first != address)
+      {
+        if (it == die_object.line_section.begin())
+        {
           // If we are on the first item of the line section
           // but the address does not match it means that
           // the address is below the range of the DIE. Give up.
           return trace;
-        } else {
+        }
+        else
+        {
           --it;
         }
       }
-    } else {
+    }
+    else
+    {
       return trace;  // We didn't find the address.
     }
 
@@ -1790,21 +2056,28 @@ public:
     Dwarf_Error error = DW_DLE_NE;
 
     char* filename;
-    if (dwarf_linesrc(line, &filename, &error) == DW_DLV_OK) {
+    if (dwarf_linesrc(line, &filename, &error) == DW_DLV_OK)
+    {
       trace.source.filename = std::string(filename);
       dwarf_dealloc(fobj.dwarf_handle.get(), filename, DW_DLA_STRING);
     }
 
     Dwarf_Unsigned number = 0;
-    if (dwarf_lineno(line, &number, &error) == DW_DLV_OK) {
+    if (dwarf_lineno(line, &number, &error) == DW_DLV_OK)
+    {
       trace.source.line = number;
-    } else {
+    }
+    else
+    {
       trace.source.line = 0;
     }
 
-    if (dwarf_lineoff_b(line, &number, &error) == DW_DLV_OK) {
+    if (dwarf_lineoff_b(line, &number, &error) == DW_DLV_OK)
+    {
       trace.source.col = number;
-    } else {
+    }
+    else
+    {
       trace.source.col = 0;
     }
 
@@ -1817,7 +2090,8 @@ public:
   }
 
 public:
-  static int close_dwarf(Dwarf_Debug dwarf) {
+  static int close_dwarf(Dwarf_Debug dwarf)
+  {
     return dwarf_finish(dwarf, NULL);
   }
 
@@ -1834,22 +2108,28 @@ private:
 
   typedef std::map<Dwarf_Off, Dwarf_Off> die_specmap_t;
 
-  struct die_cache_entry {
+  struct die_cache_entry
+  {
     die_specmap_t spec_section;
     die_linemap_t line_section;
     Dwarf_Line* line_buffer;
     Dwarf_Signed line_count;
     Dwarf_Line_Context line_context;
 
-    inline bool isEmpty() {
+    inline bool isEmpty()
+    {
       return line_buffer == NULL || line_count == 0 || line_context == NULL || line_section.empty();
     }
 
-    die_cache_entry() : line_buffer(0), line_count(0), line_context(0) {
+    die_cache_entry()
+      : line_buffer(0), line_count(0), line_context(0)
+    {
     }
 
-    ~die_cache_entry() {
-      if (line_context) {
+    ~die_cache_entry()
+    {
+      if (line_context)
+      {
         dwarf_srclines_dealloc_b(line_context);
       }
     }
@@ -1859,7 +2139,8 @@ private:
 
   typedef std::map<uintptr_t, std::string> symbol_cache_t;
 
-  struct dwarf_fileobject {
+  struct dwarf_fileobject
+  {
     dwarf_file_t file_handle;
     dwarf_elf_t elf_handle;
     dwarf_handle_t dwarf_handle;
@@ -1873,22 +2154,27 @@ private:
   typedef details::hashtable<std::string, dwarf_fileobject>::type fobj_dwarf_map_t;
   fobj_dwarf_map_t _fobj_dwarf_map;
 
-  static bool cstrings_eq(const char* a, const char* b) {
-    if (!a || !b) {
+  static bool cstrings_eq(const char* a, const char* b)
+  {
+    if (!a || !b)
+    {
       return false;
     }
     return strcmp(a, b) == 0;
   }
 
-  dwarf_fileobject& load_object_with_dwarf(const std::string& filename_object) {
-    if (!_dwarf_loaded) {
+  dwarf_fileobject& load_object_with_dwarf(const std::string& filename_object)
+  {
+    if (!_dwarf_loaded)
+    {
       // Set the ELF library operating version
       // If that fails there's nothing we can do
       _dwarf_loaded = elf_version(EV_CURRENT) != EV_NONE;
     }
 
     fobj_dwarf_map_t::iterator it = _fobj_dwarf_map.find(filename_object);
-    if (it != _fobj_dwarf_map.end()) {
+    if (it != _fobj_dwarf_map.end())
+    {
       return it->second;
     }
 
@@ -1897,7 +2183,8 @@ private:
 
     dwarf_file_t file_handle;
     file_handle.reset(open(filename_object.c_str(), O_RDONLY));
-    if (file_handle < 0) {
+    if (file_handle < 0)
+    {
       return r;
     }
 
@@ -1906,25 +2193,29 @@ private:
     // that points to a split debug file
     dwarf_elf_t elf_handle;
     elf_handle.reset(elf_begin(file_handle.get(), ELF_C_READ, NULL));
-    if (!elf_handle) {
+    if (!elf_handle)
+    {
       return r;
     }
 
     const char* e_ident = elf_getident(elf_handle.get(), 0);
-    if (!e_ident) {
+    if (!e_ident)
+    {
       return r;
     }
 
     // Get the number of sections
     // We use the new APIs as elf_getshnum is deprecated
     size_t shdrnum = 0;
-    if (elf_getshdrnum(elf_handle.get(), &shdrnum) == -1) {
+    if (elf_getshdrnum(elf_handle.get(), &shdrnum) == -1)
+    {
       return r;
     }
 
     // Get the index to the string section
     size_t shdrstrndx = 0;
-    if (elf_getshdrstrndx(elf_handle.get(), &shdrstrndx) == -1) {
+    if (elf_getshdrstrndx(elf_handle.get(), &shdrstrndx) == -1)
+    {
       return r;
     }
 
@@ -1934,86 +2225,102 @@ private:
 // We go the preprocessor way to avoid having to create templated
 // classes or using gelf (which might throw a compiler error if 64 bit
 // is not supported
-#define ELF_GET_DATA(ARCH)                                                                              \
-  Elf_Scn* elf_section = 0;                                                                             \
-  Elf_Data* elf_data = 0;                                                                               \
-  Elf##ARCH##_Shdr* section_header = 0;                                                                 \
-  Elf_Scn* symbol_section = 0;                                                                          \
-  size_t symbol_count = 0;                                                                              \
-  size_t symbol_strings = 0;                                                                            \
-  Elf##ARCH##_Sym* symbol = 0;                                                                          \
-  const char* section_name = 0;                                                                         \
-                                                                                                        \
-  while ((elf_section = elf_nextscn(elf_handle.get(), elf_section)) != NULL) {                          \
-    section_header = elf##ARCH##_getshdr(elf_section);                                                  \
-    if (section_header == NULL) {                                                                       \
-      return r;                                                                                         \
-    }                                                                                                   \
-                                                                                                        \
-    if ((section_name = elf_strptr(elf_handle.get(), shdrstrndx, section_header->sh_name)) == NULL) {   \
-      return r;                                                                                         \
-    }                                                                                                   \
-                                                                                                        \
-    if (cstrings_eq(section_name, ".gnu_debuglink")) {                                                  \
-      elf_data = elf_getdata(elf_section, NULL);                                                        \
-      if (elf_data && elf_data->d_size > 0) {                                                           \
-        debuglink = std::string(reinterpret_cast<const char*>(elf_data->d_buf));                        \
-      }                                                                                                 \
-    }                                                                                                   \
-                                                                                                        \
-    switch (section_header->sh_type) {                                                                  \
-      case SHT_SYMTAB:                                                                                  \
-        symbol_section = elf_section;                                                                   \
-        symbol_count = section_header->sh_size / section_header->sh_entsize;                            \
-        symbol_strings = section_header->sh_link;                                                       \
-        break;                                                                                          \
-                                                                                                        \
-      /* We use .dynsyms as a last resort, we prefer .symtab */                                         \
-      case SHT_DYNSYM:                                                                                  \
-        if (!symbol_section) {                                                                          \
-          symbol_section = elf_section;                                                                 \
-          symbol_count = section_header->sh_size / section_header->sh_entsize;                          \
-          symbol_strings = section_header->sh_link;                                                     \
-        }                                                                                               \
-        break;                                                                                          \
-    }                                                                                                   \
-  }                                                                                                     \
-                                                                                                        \
-  if (symbol_section && symbol_count && symbol_strings) {                                               \
-    elf_data = elf_getdata(symbol_section, NULL);                                                       \
-    symbol = reinterpret_cast<Elf##ARCH##_Sym*>(elf_data->d_buf);                                       \
-    for (size_t i = 0; i < symbol_count; ++i) {                                                         \
-      int type = ELF##ARCH##_ST_TYPE(symbol->st_info);                                                  \
-      if (type == STT_FUNC && symbol->st_value > 0) {                                                   \
-        r.symbol_cache[symbol->st_value] =                                                              \
-            std::string(elf_strptr(elf_handle.get(), symbol_strings, symbol->st_name));                 \
-      }                                                                                                 \
-      ++symbol;                                                                                         \
-    }                                                                                                   \
+#define ELF_GET_DATA(ARCH)                                                                          \
+  Elf_Scn* elf_section = 0;                                                                         \
+  Elf_Data* elf_data = 0;                                                                           \
+  Elf##ARCH##_Shdr* section_header = 0;                                                             \
+  Elf_Scn* symbol_section = 0;                                                                      \
+  size_t symbol_count = 0;                                                                          \
+  size_t symbol_strings = 0;                                                                        \
+  Elf##ARCH##_Sym* symbol = 0;                                                                      \
+  const char* section_name = 0;                                                                     \
+                                                                                                    \
+  while ((elf_section = elf_nextscn(elf_handle.get(), elf_section)) != NULL)                        \
+  {                                                                                                 \
+    section_header = elf##ARCH##_getshdr(elf_section);                                              \
+    if (section_header == NULL)                                                                     \
+    {                                                                                               \
+      return r;                                                                                     \
+    }                                                                                               \
+                                                                                                    \
+    if ((section_name = elf_strptr(elf_handle.get(), shdrstrndx, section_header->sh_name)) == NULL) \
+    {                                                                                               \
+      return r;                                                                                     \
+    }                                                                                               \
+                                                                                                    \
+    if (cstrings_eq(section_name, ".gnu_debuglink"))                                                \
+    {                                                                                               \
+      elf_data = elf_getdata(elf_section, NULL);                                                    \
+      if (elf_data && elf_data->d_size > 0)                                                         \
+      {                                                                                             \
+        debuglink = std::string(reinterpret_cast<const char*>(elf_data->d_buf));                    \
+      }                                                                                             \
+    }                                                                                               \
+                                                                                                    \
+    switch (section_header->sh_type)                                                                \
+    {                                                                                               \
+      case SHT_SYMTAB:                                                                              \
+        symbol_section = elf_section;                                                               \
+        symbol_count = section_header->sh_size / section_header->sh_entsize;                        \
+        symbol_strings = section_header->sh_link;                                                   \
+        break;                                                                                      \
+                                                                                                    \
+      /* We use .dynsyms as a last resort, we prefer .symtab */                                     \
+      case SHT_DYNSYM:                                                                              \
+        if (!symbol_section)                                                                        \
+        {                                                                                           \
+          symbol_section = elf_section;                                                             \
+          symbol_count = section_header->sh_size / section_header->sh_entsize;                      \
+          symbol_strings = section_header->sh_link;                                                 \
+        }                                                                                           \
+        break;                                                                                      \
+    }                                                                                               \
+  }                                                                                                 \
+                                                                                                    \
+  if (symbol_section && symbol_count && symbol_strings)                                             \
+  {                                                                                                 \
+    elf_data = elf_getdata(symbol_section, NULL);                                                   \
+    symbol = reinterpret_cast<Elf##ARCH##_Sym*>(elf_data->d_buf);                                   \
+    for (size_t i = 0; i < symbol_count; ++i)                                                       \
+    {                                                                                               \
+      int type = ELF##ARCH##_ST_TYPE(symbol->st_info);                                              \
+      if (type == STT_FUNC && symbol->st_value > 0)                                                 \
+      {                                                                                             \
+        r.symbol_cache[symbol->st_value] =                                                          \
+            std::string(elf_strptr(elf_handle.get(), symbol_strings, symbol->st_name));             \
+      }                                                                                             \
+      ++symbol;                                                                                     \
+    }                                                                                               \
   }
 
-    if (e_ident[EI_CLASS] == ELFCLASS32) {
+    if (e_ident[EI_CLASS] == ELFCLASS32)
+    {
       ELF_GET_DATA(32)
-    } else if (e_ident[EI_CLASS] == ELFCLASS64) {
+    }
+    else if (e_ident[EI_CLASS] == ELFCLASS64)
+    {
 // libelf might have been built without 64 bit support
 #if __LIBELF64
       ELF_GET_DATA(64)
 #endif
     }
 
-    if (!debuglink.empty()) {
+    if (!debuglink.empty())
+    {
       // We have a debuglink section! Open an elf instance on that
       // file instead. If we can't open the file, then return
       // the elf handle we had already opened.
       dwarf_file_t debuglink_file;
       debuglink_file.reset(open(debuglink.c_str(), O_RDONLY));
-      if (debuglink_file.get() > 0) {
+      if (debuglink_file.get() > 0)
+      {
         dwarf_elf_t debuglink_elf;
         debuglink_elf.reset(elf_begin(debuglink_file.get(), ELF_C_READ, NULL));
 
         // If we have a valid elf handle, return the new elf handle
         // and file handle and discard the original ones
-        if (debuglink_elf) {
+        if (debuglink_elf)
+        {
           elf_handle = move(debuglink_elf);
           file_handle = move(debuglink_file);
         }
@@ -2030,7 +2337,8 @@ private:
     // We don't do any special handling for DW_DLV_NO_ENTRY specially.
     // If we get an error, or the file doesn't have debug information
     // we just return.
-    if (dwarf_result != DW_DLV_OK) {
+    if (dwarf_result != DW_DLV_OK)
+    {
       return r;
     }
 
@@ -2043,18 +2351,21 @@ private:
     return r;
   }
 
-  die_cache_entry& get_die_cache(dwarf_fileobject& fobj, Dwarf_Die die) {
+  die_cache_entry& get_die_cache(dwarf_fileobject& fobj, Dwarf_Die die)
+  {
     Dwarf_Error error = DW_DLE_NE;
 
     // Get the die offset, we use it as the cache key
     Dwarf_Off die_offset;
-    if (dwarf_dieoffset(die, &die_offset, &error) != DW_DLV_OK) {
+    if (dwarf_dieoffset(die, &die_offset, &error) != DW_DLV_OK)
+    {
       die_offset = 0;
     }
 
     die_cache_t::iterator it = fobj.die_cache.find(die_offset);
 
-    if (it != fobj.die_cache.end()) {
+    if (it != fobj.die_cache.end())
+    {
       fobj.current_cu = &it->second;
       return it->second;
     }
@@ -2079,14 +2390,18 @@ private:
     // by using insert instead of the map's [ operator.
 
     // Get the line context for the DIE
-    if (dwarf_srclines_b(die, 0, &table_count, &de.line_context, &error) == DW_DLV_OK) {
+    if (dwarf_srclines_b(die, 0, &table_count, &de.line_context, &error) == DW_DLV_OK)
+    {
       // Get the source lines for this line context, to be deallocated
       // later
       if (dwarf_srclines_from_linecontext(de.line_context, &de.line_buffer, &de.line_count, &error) ==
-          DW_DLV_OK) {
+          DW_DLV_OK)
+      {
         // Add all the addresses to our map
-        for (int i = 0; i < de.line_count; i++) {
-          if (dwarf_lineaddr(de.line_buffer[i], &line_addr, &error) != DW_DLV_OK) {
+        for (int i = 0; i < de.line_count; i++)
+        {
+          if (dwarf_lineaddr(de.line_buffer[i], &line_addr, &error) != DW_DLV_OK)
+          {
             line_addr = 0;
           }
           de.line_section.insert(std::pair<Dwarf_Addr, int>(line_addr, i));
@@ -2105,23 +2420,31 @@ private:
     // DWARF function names.
     Dwarf_Debug dwarf = fobj.dwarf_handle.get();
     Dwarf_Die current_die = 0;
-    if (dwarf_child(die, &current_die, &error) == DW_DLV_OK) {
-      for (;;) {
+    if (dwarf_child(die, &current_die, &error) == DW_DLV_OK)
+    {
+      for (;;)
+      {
         Dwarf_Die sibling_die = 0;
 
         Dwarf_Half tag_value;
         dwarf_tag(current_die, &tag_value, &error);
 
-        if (tag_value == DW_TAG_subprogram || tag_value == DW_TAG_inlined_subroutine) {
+        if (tag_value == DW_TAG_subprogram || tag_value == DW_TAG_inlined_subroutine)
+        {
           Dwarf_Bool has_attr = 0;
-          if (dwarf_hasattr(current_die, DW_AT_specification, &has_attr, &error) == DW_DLV_OK) {
-            if (has_attr) {
+          if (dwarf_hasattr(current_die, DW_AT_specification, &has_attr, &error) == DW_DLV_OK)
+          {
+            if (has_attr)
+            {
               Dwarf_Attribute attr_mem;
-              if (dwarf_attr(current_die, DW_AT_specification, &attr_mem, &error) == DW_DLV_OK) {
+              if (dwarf_attr(current_die, DW_AT_specification, &attr_mem, &error) == DW_DLV_OK)
+              {
                 Dwarf_Off spec_offset = 0;
-                if (dwarf_formref(attr_mem, &spec_offset, &error) == DW_DLV_OK) {
+                if (dwarf_formref(attr_mem, &spec_offset, &error) == DW_DLV_OK)
+                {
                   Dwarf_Off spec_die_offset;
-                  if (dwarf_dieoffset(current_die, &spec_die_offset, &error) == DW_DLV_OK) {
+                  if (dwarf_dieoffset(current_die, &spec_die_offset, &error) == DW_DLV_OK)
+                  {
                     de.spec_section[spec_offset] = spec_die_offset;
                   }
                 }
@@ -2132,13 +2455,17 @@ private:
         }
 
         int result = dwarf_siblingof(dwarf, current_die, &sibling_die, &error);
-        if (result == DW_DLV_ERROR) {
+        if (result == DW_DLV_ERROR)
+        {
           break;
-        } else if (result == DW_DLV_NO_ENTRY) {
+        }
+        else if (result == DW_DLV_NO_ENTRY)
+        {
           break;
         }
 
-        if (current_die != die) {
+        if (current_die != die)
+        {
           dwarf_dealloc(dwarf, current_die, DW_DLA_DIE);
           current_die = 0;
         }
@@ -2149,22 +2476,29 @@ private:
     return de;
   }
 
-  static Dwarf_Die get_referenced_die(Dwarf_Debug dwarf, Dwarf_Die die, Dwarf_Half attr, bool global) {
+  static Dwarf_Die get_referenced_die(Dwarf_Debug dwarf, Dwarf_Die die, Dwarf_Half attr, bool global)
+  {
     Dwarf_Error error = DW_DLE_NE;
     Dwarf_Attribute attr_mem;
 
     Dwarf_Die found_die = NULL;
-    if (dwarf_attr(die, attr, &attr_mem, &error) == DW_DLV_OK) {
+    if (dwarf_attr(die, attr, &attr_mem, &error) == DW_DLV_OK)
+    {
       Dwarf_Off offset;
       int result = 0;
-      if (global) {
+      if (global)
+      {
         result = dwarf_global_formref(attr_mem, &offset, &error);
-      } else {
+      }
+      else
+      {
         result = dwarf_formref(attr_mem, &offset, &error);
       }
 
-      if (result == DW_DLV_OK) {
-        if (dwarf_offdie(dwarf, offset, &found_die, &error) != DW_DLV_OK) {
+      if (result == DW_DLV_OK)
+      {
+        if (dwarf_offdie(dwarf, offset, &found_die, &error) != DW_DLV_OK)
+        {
           found_die = NULL;
         }
       }
@@ -2174,16 +2508,20 @@ private:
   }
 
   static std::string get_referenced_die_name(Dwarf_Debug dwarf, Dwarf_Die die, Dwarf_Half attr,
-                                             bool global) {
+                                             bool global)
+  {
     Dwarf_Error error = DW_DLE_NE;
     std::string value;
 
     Dwarf_Die found_die = get_referenced_die(dwarf, die, attr, global);
 
-    if (found_die) {
+    if (found_die)
+    {
       char* name;
-      if (dwarf_diename(found_die, &name, &error) == DW_DLV_OK) {
-        if (name) {
+      if (dwarf_diename(found_die, &name, &error) == DW_DLV_OK)
+      {
+        if (name)
+        {
           value = std::string(name);
         }
         dwarf_dealloc(dwarf, name, DW_DLA_STRING);
@@ -2196,18 +2534,22 @@ private:
 
   // Returns a spec DIE linked to the passed one. The caller should
   // deallocate the DIE
-  static Dwarf_Die get_spec_die(dwarf_fileobject& fobj, Dwarf_Die die) {
+  static Dwarf_Die get_spec_die(dwarf_fileobject& fobj, Dwarf_Die die)
+  {
     Dwarf_Debug dwarf = fobj.dwarf_handle.get();
     Dwarf_Error error = DW_DLE_NE;
     Dwarf_Off die_offset;
-    if (fobj.current_cu && dwarf_die_CU_offset(die, &die_offset, &error) == DW_DLV_OK) {
+    if (fobj.current_cu && dwarf_die_CU_offset(die, &die_offset, &error) == DW_DLV_OK)
+    {
       die_specmap_t::iterator it = fobj.current_cu->spec_section.find(die_offset);
 
       // If we have a DIE that completes the current one, check if
       // that one has the pc we are looking for
-      if (it != fobj.current_cu->spec_section.end()) {
+      if (it != fobj.current_cu->spec_section.end())
+      {
         Dwarf_Die spec_die = 0;
-        if (dwarf_offdie(dwarf, it->second, &spec_die, &error) == DW_DLV_OK) {
+        if (dwarf_offdie(dwarf, it->second, &spec_die, &error) == DW_DLV_OK)
+        {
           return spec_die;
         }
       }
@@ -2217,7 +2559,8 @@ private:
     return get_referenced_die(fobj.dwarf_handle.get(), die, DW_AT_abstract_origin, true);
   }
 
-  static bool die_has_pc(dwarf_fileobject& fobj, Dwarf_Die die, Dwarf_Addr pc) {
+  static bool die_has_pc(dwarf_fileobject& fobj, Dwarf_Die die, Dwarf_Addr pc)
+  {
     Dwarf_Addr low_pc = 0, high_pc = 0;
     Dwarf_Half high_pc_form = 0;
     Dwarf_Form_Class return_class;
@@ -2227,19 +2570,22 @@ private:
     bool has_highpc = false;
     bool has_ranges = false;
 
-    if (dwarf_lowpc(die, &low_pc, &error) == DW_DLV_OK) {
+    if (dwarf_lowpc(die, &low_pc, &error) == DW_DLV_OK)
+    {
       // If we have a low_pc check if there is a high pc.
       // If we don't have a high pc this might mean we have a base
       // address for the ranges list or just an address.
       has_lowpc = true;
 
-      if (dwarf_highpc_b(die, &high_pc, &high_pc_form, &return_class, &error) == DW_DLV_OK) {
+      if (dwarf_highpc_b(die, &high_pc, &high_pc_form, &return_class, &error) == DW_DLV_OK)
+      {
         // We do have a high pc. In DWARF 4+ this is an offset from the
         // low pc, but in earlier versions it's an absolute address.
 
         has_highpc = true;
         // In DWARF 2/3 this would be a DW_FORM_CLASS_ADDRESS
-        if (return_class == DW_FORM_CLASS_CONSTANT) {
+        if (return_class == DW_FORM_CLASS_CONSTANT)
+        {
           high_pc = low_pc + high_pc;
         }
 
@@ -2247,7 +2593,9 @@ private:
         // is in that range
         return pc >= low_pc && pc < high_pc;
       }
-    } else {
+    }
+    else
+    {
       // Reset the low_pc, in case dwarf_lowpc failing set it to some
       // undefined value.
       low_pc = 0;
@@ -2259,19 +2607,24 @@ private:
     bool result = false;
 
     Dwarf_Attribute attr;
-    if (dwarf_attr(die, DW_AT_ranges, &attr, &error) == DW_DLV_OK) {
+    if (dwarf_attr(die, DW_AT_ranges, &attr, &error) == DW_DLV_OK)
+    {
       Dwarf_Off offset;
-      if (dwarf_global_formref(attr, &offset, &error) == DW_DLV_OK) {
+      if (dwarf_global_formref(attr, &offset, &error) == DW_DLV_OK)
+      {
         Dwarf_Ranges* ranges;
         Dwarf_Signed ranges_count = 0;
         Dwarf_Unsigned byte_count = 0;
 
         if (dwarf_get_ranges_a(dwarf, offset, die, &ranges, &ranges_count, &byte_count, &error) ==
-            DW_DLV_OK) {
+            DW_DLV_OK)
+        {
           has_ranges = ranges_count != 0;
-          for (int i = 0; i < ranges_count; i++) {
+          for (int i = 0; i < ranges_count; i++)
+          {
             if (ranges[i].dwr_addr1 != 0 && pc >= ranges[i].dwr_addr1 + low_pc &&
-                pc < ranges[i].dwr_addr2 + low_pc) {
+                pc < ranges[i].dwr_addr2 + low_pc)
+            {
               result = true;
               break;
             }
@@ -2282,16 +2635,19 @@ private:
     }
 
     // Last attempt. We might have a single address set as low_pc.
-    if (!result && low_pc != 0 && pc == low_pc) {
+    if (!result && low_pc != 0 && pc == low_pc)
+    {
       result = true;
     }
 
     // If we don't have lowpc, highpc and ranges maybe this DIE is a
     // declaration that relies on a DW_AT_specification DIE that happens
     // later. Use the specification cache we filled when we loaded this CU.
-    if (!result && (!has_lowpc && !has_highpc && !has_ranges)) {
+    if (!result && (!has_lowpc && !has_highpc && !has_ranges))
+    {
       Dwarf_Die spec_die = get_spec_die(fobj, die);
-      if (spec_die) {
+      if (spec_die)
+      {
         result = die_has_pc(fobj, spec_die, pc);
         dwarf_dealloc(dwarf, spec_die, DW_DLA_DIE);
       }
@@ -2300,38 +2656,49 @@ private:
     return result;
   }
 
-  static void get_type(Dwarf_Debug dwarf, Dwarf_Die die, std::string& type) {
+  static void get_type(Dwarf_Debug dwarf, Dwarf_Die die, std::string& type)
+  {
     Dwarf_Error error = DW_DLE_NE;
 
     Dwarf_Die child = 0;
-    if (dwarf_child(die, &child, &error) == DW_DLV_OK) {
+    if (dwarf_child(die, &child, &error) == DW_DLV_OK)
+    {
       get_type(dwarf, child, type);
     }
 
-    if (child) {
+    if (child)
+    {
       type.insert(0, "::");
       dwarf_dealloc(dwarf, child, DW_DLA_DIE);
     }
 
     char* name;
-    if (dwarf_diename(die, &name, &error) == DW_DLV_OK) {
+    if (dwarf_diename(die, &name, &error) == DW_DLV_OK)
+    {
       type.insert(0, std::string(name));
       dwarf_dealloc(dwarf, name, DW_DLA_STRING);
-    } else {
+    }
+    else
+    {
       type.insert(0, "<unknown>");
     }
   }
 
-  static std::string get_type_by_signature(Dwarf_Debug dwarf, Dwarf_Die die) {
+  static std::string get_type_by_signature(Dwarf_Debug dwarf, Dwarf_Die die)
+  {
     Dwarf_Error error = DW_DLE_NE;
 
     Dwarf_Sig8 signature;
     Dwarf_Bool has_attr = 0;
-    if (dwarf_hasattr(die, DW_AT_signature, &has_attr, &error) == DW_DLV_OK) {
-      if (has_attr) {
+    if (dwarf_hasattr(die, DW_AT_signature, &has_attr, &error) == DW_DLV_OK)
+    {
+      if (has_attr)
+      {
         Dwarf_Attribute attr_mem;
-        if (dwarf_attr(die, DW_AT_signature, &attr_mem, &error) == DW_DLV_OK) {
-          if (dwarf_formsig8(attr_mem, &signature, &error) != DW_DLV_OK) {
+        if (dwarf_attr(die, DW_AT_signature, &attr_mem, &error) == DW_DLV_OK)
+        {
+          if (dwarf_formsig8(attr_mem, &signature, &error) != DW_DLV_OK)
+          {
             return std::string("<no type signature>");
           }
         }
@@ -2345,12 +2712,16 @@ private:
     bool found = false;
 
     while (dwarf_next_cu_header_d(dwarf, 0, 0, 0, 0, 0, 0, 0, &tu_signature, 0, &next_cu_header, 0,
-                                  &error) == DW_DLV_OK) {
-      if (strncmp(signature.signature, tu_signature.signature, 8) == 0) {
+                                  &error) == DW_DLV_OK)
+    {
+      if (strncmp(signature.signature, tu_signature.signature, 8) == 0)
+      {
         Dwarf_Die type_cu_die = 0;
-        if (dwarf_siblingof_b(dwarf, 0, 0, &type_cu_die, &error) == DW_DLV_OK) {
+        if (dwarf_siblingof_b(dwarf, 0, 0, &type_cu_die, &error) == DW_DLV_OK)
+        {
           Dwarf_Die child_die = 0;
-          if (dwarf_child(type_cu_die, &child_die, &error) == DW_DLV_OK) {
+          if (dwarf_child(type_cu_die, &child_die, &error) == DW_DLV_OK)
+          {
             get_type(dwarf, child_die, result);
             found = !result.empty();
             dwarf_dealloc(dwarf, child_die, DW_DLA_DIE);
@@ -2360,19 +2731,24 @@ private:
       }
     }
 
-    if (found) {
+    if (found)
+    {
       while (dwarf_next_cu_header_d(dwarf, 0, 0, 0, 0, 0, 0, 0, 0, 0, &next_cu_header, 0, &error) ==
-             DW_DLV_OK) {
+             DW_DLV_OK)
+      {
         // Reset the cu header state. Unfortunately, libdwarf's
         // next_cu_header API keeps its own iterator per Dwarf_Debug
         // that can't be reset. We need to keep fetching elements until
         // the end.
       }
-    } else {
+    }
+    else
+    {
       // If we couldn't resolve the type just print out the signature
       std::ostringstream string_stream;
       string_stream << "<0x" << std::hex << std::setfill('0');
-      for (int i = 0; i < 8; ++i) {
+      for (int i = 0; i < 8; ++i)
+      {
         string_stream << std::setw(2) << std::hex << (int)(unsigned char)(signature.signature[i]);
       }
       string_stream << ">";
@@ -2381,14 +2757,17 @@ private:
     return result;
   }
 
-  struct type_context_t {
+  struct type_context_t
+  {
     bool is_const;
     bool is_typedef;
     bool has_type;
     bool has_name;
     std::string text;
 
-    type_context_t() : is_const(false), is_typedef(false), has_type(false), has_name(false) {
+    type_context_t()
+      : is_const(false), is_typedef(false), has_type(false), has_name(false)
+    {
     }
   };
 
@@ -2396,24 +2775,31 @@ private:
   // and then all specifiers (like const or pointer) in a chain of DW_AT_type
   // DIEs. Call this function recursively until we get a complete type
   // string.
-  static void set_parameter_string(dwarf_fileobject& fobj, Dwarf_Die die, type_context_t& context) {
+  static void set_parameter_string(dwarf_fileobject& fobj, Dwarf_Die die, type_context_t& context)
+  {
     char* name;
     Dwarf_Error error = DW_DLE_NE;
 
     // typedefs contain also the base type, so we skip it and only
     // print the typedef name
-    if (!context.is_typedef) {
-      if (dwarf_diename(die, &name, &error) == DW_DLV_OK) {
-        if (!context.text.empty()) {
+    if (!context.is_typedef)
+    {
+      if (dwarf_diename(die, &name, &error) == DW_DLV_OK)
+      {
+        if (!context.text.empty())
+        {
           context.text.insert(0, " ");
         }
         context.text.insert(0, std::string(name));
         dwarf_dealloc(fobj.dwarf_handle.get(), name, DW_DLA_STRING);
       }
-    } else {
+    }
+    else
+    {
       context.is_typedef = false;
       context.has_type = true;
-      if (context.is_const) {
+      if (context.is_const)
+      {
         context.text.insert(0, "const ");
         context.is_const = false;
       }
@@ -2424,22 +2810,28 @@ private:
 
     Dwarf_Half tag = 0;
     Dwarf_Bool has_attr = 0;
-    if (dwarf_tag(die, &tag, &error) == DW_DLV_OK) {
-      switch (tag) {
+    if (dwarf_tag(die, &tag, &error) == DW_DLV_OK)
+    {
+      switch (tag)
+      {
         case DW_TAG_structure_type:
         case DW_TAG_union_type:
         case DW_TAG_class_type:
         case DW_TAG_enumeration_type:
           context.has_type = true;
-          if (dwarf_hasattr(die, DW_AT_signature, &has_attr, &error) == DW_DLV_OK) {
+          if (dwarf_hasattr(die, DW_AT_signature, &has_attr, &error) == DW_DLV_OK)
+          {
             // If we have a signature it means the type is defined
             // in .debug_types, so we need to load the DIE pointed
             // at by the signature and resolve it
-            if (has_attr) {
+            if (has_attr)
+            {
               std::string type = get_type_by_signature(fobj.dwarf_handle.get(), die);
-              if (context.is_const) type.insert(0, "const ");
+              if (context.is_const)
+                type.insert(0, "const ");
 
-              if (!context.text.empty()) context.text.insert(0, " ");
+              if (!context.text.empty())
+                context.text.insert(0, " ");
               context.text.insert(0, type);
             }
 
@@ -2485,19 +2877,22 @@ private:
       }
     }
 
-    if (!is_keyword && context.is_const) {
+    if (!is_keyword && context.is_const)
+    {
       context.text.insert(0, "const ");
     }
 
     context.is_const = next_type_is_const;
 
     Dwarf_Die ref = get_referenced_die(fobj.dwarf_handle.get(), die, DW_AT_type, true);
-    if (ref) {
+    if (ref)
+    {
       set_parameter_string(fobj, ref, context);
       dwarf_dealloc(fobj.dwarf_handle.get(), ref, DW_DLA_DIE);
     }
 
-    if (!context.has_type && context.has_name) {
+    if (!context.has_type && context.has_name)
+    {
       context.text.insert(0, "void ");
       context.has_type = true;
     }
@@ -2505,7 +2900,8 @@ private:
 
   // Resolve the function return type and parameters
   static void set_function_parameters(std::string& function_name, std::vector<std::string>& ns,
-                                      dwarf_fileobject& fobj, Dwarf_Die die) {
+                                      dwarf_fileobject& fobj, Dwarf_Die die)
+  {
     Dwarf_Debug dwarf = fobj.dwarf_handle.get();
     Dwarf_Error error = DW_DLE_NE;
     Dwarf_Die current_die = 0;
@@ -2514,58 +2910,72 @@ private:
     // Check if we have a spec DIE. If we do we use it as it contains
     // more information, like parameter names.
     Dwarf_Die spec_die = get_spec_die(fobj, die);
-    if (!spec_die) {
+    if (!spec_die)
+    {
       has_spec = false;
       spec_die = die;
     }
 
     std::vector<std::string>::const_iterator it = ns.begin();
     std::string ns_name;
-    for (it = ns.begin(); it < ns.end(); ++it) {
+    for (it = ns.begin(); it < ns.end(); ++it)
+    {
       ns_name.append(*it).append("::");
     }
 
-    if (!ns_name.empty()) {
+    if (!ns_name.empty())
+    {
       function_name.insert(0, ns_name);
     }
 
     // See if we have a function return type. It can be either on the
     // current die or in its spec one (usually true for inlined functions)
     std::string return_type = get_referenced_die_name(dwarf, die, DW_AT_type, true);
-    if (return_type.empty()) {
+    if (return_type.empty())
+    {
       return_type = get_referenced_die_name(dwarf, spec_die, DW_AT_type, true);
     }
-    if (!return_type.empty()) {
+    if (!return_type.empty())
+    {
       return_type.append(" ");
       function_name.insert(0, return_type);
     }
 
-    if (dwarf_child(spec_die, &current_die, &error) == DW_DLV_OK) {
-      for (;;) {
+    if (dwarf_child(spec_die, &current_die, &error) == DW_DLV_OK)
+    {
+      for (;;)
+      {
         Dwarf_Die sibling_die = 0;
 
         Dwarf_Half tag_value;
         dwarf_tag(current_die, &tag_value, &error);
 
-        if (tag_value == DW_TAG_formal_parameter) {
+        if (tag_value == DW_TAG_formal_parameter)
+        {
           // Ignore artificial (ie, compiler generated) parameters
           bool is_artificial = false;
           Dwarf_Attribute attr_mem;
-          if (dwarf_attr(current_die, DW_AT_artificial, &attr_mem, &error) == DW_DLV_OK) {
+          if (dwarf_attr(current_die, DW_AT_artificial, &attr_mem, &error) == DW_DLV_OK)
+          {
             Dwarf_Bool flag = 0;
-            if (dwarf_formflag(attr_mem, &flag, &error) == DW_DLV_OK) {
+            if (dwarf_formflag(attr_mem, &flag, &error) == DW_DLV_OK)
+            {
               is_artificial = flag != 0;
             }
             dwarf_dealloc(dwarf, attr_mem, DW_DLA_ATTR);
           }
 
-          if (!is_artificial) {
+          if (!is_artificial)
+          {
             type_context_t context;
             set_parameter_string(fobj, current_die, context);
 
-            if (parameters.empty()) {
+            if (parameters.empty())
+            {
               parameters.append("(");
-            } else {
+            }
+            else
+            {
               parameters.append(", ");
             }
             parameters.append(context.text);
@@ -2573,13 +2983,17 @@ private:
         }
 
         int result = dwarf_siblingof(dwarf, current_die, &sibling_die, &error);
-        if (result == DW_DLV_ERROR) {
+        if (result == DW_DLV_ERROR)
+        {
           break;
-        } else if (result == DW_DLV_NO_ENTRY) {
+        }
+        else if (result == DW_DLV_NO_ENTRY)
+        {
           break;
         }
 
-        if (current_die != die) {
+        if (current_die != die)
+        {
           dwarf_dealloc(dwarf, current_die, DW_DLA_DIE);
           current_die = 0;
         }
@@ -2587,19 +3001,23 @@ private:
         current_die = sibling_die;
       }
     }
-    if (parameters.empty()) parameters = "(";
+    if (parameters.empty())
+      parameters = "(";
     parameters.append(")");
 
     // If we got a spec DIE we need to deallocate it
-    if (has_spec) dwarf_dealloc(dwarf, spec_die, DW_DLA_DIE);
+    if (has_spec)
+      dwarf_dealloc(dwarf, spec_die, DW_DLA_DIE);
 
     function_name.append(parameters);
   }
 
   // defined here because in C++98, template function cannot take locally
   // defined types... grrr.
-  struct inliners_search_cb {
-    void operator()(Dwarf_Die die, std::vector<std::string>& ns) {
+  struct inliners_search_cb
+  {
+    void operator()(Dwarf_Die die, std::vector<std::string>& ns)
+    {
       Dwarf_Error error = DW_DLE_NE;
       Dwarf_Half tag_value;
       Dwarf_Attribute attr_mem;
@@ -2607,19 +3025,25 @@ private:
 
       dwarf_tag(die, &tag_value, &error);
 
-      switch (tag_value) {
+      switch (tag_value)
+      {
         char* name;
         case DW_TAG_subprogram:
-          if (!trace.source.function.empty()) break;
-          if (dwarf_diename(die, &name, &error) == DW_DLV_OK) {
+          if (!trace.source.function.empty())
+            break;
+          if (dwarf_diename(die, &name, &error) == DW_DLV_OK)
+          {
             trace.source.function = std::string(name);
             dwarf_dealloc(dwarf, name, DW_DLA_STRING);
-          } else {
+          }
+          else
+          {
             // We don't have a function name in this DIE.
             // Check if there is a referenced non-defining
             // declaration.
             trace.source.function = get_referenced_die_name(dwarf, die, DW_AT_abstract_origin, true);
-            if (trace.source.function.empty()) {
+            if (trace.source.function.empty())
+            {
               trace.source.function = get_referenced_die_name(dwarf, die, DW_AT_specification, true);
             }
           }
@@ -2634,17 +3058,21 @@ private:
           // linkage_name and MIPS_linkage_name because the MIPS tag
           // was the unofficial one until it was adopted in DWARF4.
           // Old gcc versions generate MIPS_linkage_name
-          if (trace.object_function.empty()) {
+          if (trace.object_function.empty())
+          {
             details::demangler demangler;
 
-            if (dwarf_attr(die, DW_AT_linkage_name, &attr_mem, &error) != DW_DLV_OK) {
-              if (dwarf_attr(die, DW_AT_MIPS_linkage_name, &attr_mem, &error) != DW_DLV_OK) {
+            if (dwarf_attr(die, DW_AT_linkage_name, &attr_mem, &error) != DW_DLV_OK)
+            {
+              if (dwarf_attr(die, DW_AT_MIPS_linkage_name, &attr_mem, &error) != DW_DLV_OK)
+              {
                 break;
               }
             }
 
             char* linkage;
-            if (dwarf_formstring(attr_mem, &linkage, &error) == DW_DLV_OK) {
+            if (dwarf_formstring(attr_mem, &linkage, &error) == DW_DLV_OK)
+            {
               trace.object_function = demangler.demangle(linkage);
               dwarf_dealloc(dwarf, linkage, DW_DLA_STRING);
             }
@@ -2655,10 +3083,13 @@ private:
         case DW_TAG_inlined_subroutine:
           ResolvedTrace::SourceLoc sloc;
 
-          if (dwarf_diename(die, &name, &error) == DW_DLV_OK) {
+          if (dwarf_diename(die, &name, &error) == DW_DLV_OK)
+          {
             sloc.function = std::string(name);
             dwarf_dealloc(dwarf, name, DW_DLA_STRING);
-          } else {
+          }
+          else
+          {
             // We don't have a name for this inlined DIE, it could
             // be that there is an abstract origin instead.
             // Get the DW_AT_abstract_origin value, which is a
@@ -2669,18 +3100,23 @@ private:
           set_function_parameters(sloc.function, ns, fobj, die);
 
           std::string file = die_call_file(dwarf, die, cu_die);
-          if (!file.empty()) sloc.filename = file;
+          if (!file.empty())
+            sloc.filename = file;
 
           Dwarf_Unsigned number = 0;
-          if (dwarf_attr(die, DW_AT_call_line, &attr_mem, &error) == DW_DLV_OK) {
-            if (dwarf_formudata(attr_mem, &number, &error) == DW_DLV_OK) {
+          if (dwarf_attr(die, DW_AT_call_line, &attr_mem, &error) == DW_DLV_OK)
+          {
+            if (dwarf_formudata(attr_mem, &number, &error) == DW_DLV_OK)
+            {
               sloc.line = number;
             }
             dwarf_dealloc(dwarf, attr_mem, DW_DLA_ATTR);
           }
 
-          if (dwarf_attr(die, DW_AT_call_column, &attr_mem, &error) == DW_DLV_OK) {
-            if (dwarf_formudata(attr_mem, &number, &error) == DW_DLV_OK) {
+          if (dwarf_attr(die, DW_AT_call_column, &attr_mem, &error) == DW_DLV_OK)
+          {
+            if (dwarf_formudata(attr_mem, &number, &error) == DW_DLV_OK)
+            {
               sloc.col = number;
             }
             dwarf_dealloc(dwarf, attr_mem, DW_DLA_ATTR);
@@ -2694,63 +3130,77 @@ private:
     dwarf_fileobject& fobj;
     Dwarf_Die cu_die;
     inliners_search_cb(ResolvedTrace& t, dwarf_fileobject& f, Dwarf_Die c)
-      : trace(t), fobj(f), cu_die(c) {
+      : trace(t), fobj(f), cu_die(c)
+    {
     }
   };
 
   static Dwarf_Die find_fundie_by_pc(dwarf_fileobject& fobj, Dwarf_Die parent_die, Dwarf_Addr pc,
-                                     Dwarf_Die result) {
+                                     Dwarf_Die result)
+  {
     Dwarf_Die current_die = 0;
     Dwarf_Error error = DW_DLE_NE;
     Dwarf_Debug dwarf = fobj.dwarf_handle.get();
 
-    if (dwarf_child(parent_die, &current_die, &error) != DW_DLV_OK) {
+    if (dwarf_child(parent_die, &current_die, &error) != DW_DLV_OK)
+    {
       return NULL;
     }
 
-    for (;;) {
+    for (;;)
+    {
       Dwarf_Die sibling_die = 0;
       Dwarf_Half tag_value;
       dwarf_tag(current_die, &tag_value, &error);
 
-      switch (tag_value) {
+      switch (tag_value)
+      {
         case DW_TAG_subprogram:
         case DW_TAG_inlined_subroutine:
-          if (die_has_pc(fobj, current_die, pc)) {
+          if (die_has_pc(fobj, current_die, pc))
+          {
             return current_die;
           }
       };
       bool declaration = false;
       Dwarf_Attribute attr_mem;
-      if (dwarf_attr(current_die, DW_AT_declaration, &attr_mem, &error) == DW_DLV_OK) {
+      if (dwarf_attr(current_die, DW_AT_declaration, &attr_mem, &error) == DW_DLV_OK)
+      {
         Dwarf_Bool flag = 0;
-        if (dwarf_formflag(attr_mem, &flag, &error) == DW_DLV_OK) {
+        if (dwarf_formflag(attr_mem, &flag, &error) == DW_DLV_OK)
+        {
           declaration = flag != 0;
         }
         dwarf_dealloc(dwarf, attr_mem, DW_DLA_ATTR);
       }
 
-      if (!declaration) {
+      if (!declaration)
+      {
         // let's be curious and look deeper in the tree, functions are
         // not necessarily at the first level, but might be nested
         // inside a namespace, structure, a function, an inlined
         // function etc.
         Dwarf_Die die_mem = 0;
         Dwarf_Die indie = find_fundie_by_pc(fobj, current_die, pc, die_mem);
-        if (indie) {
+        if (indie)
+        {
           result = die_mem;
           return result;
         }
       }
 
       int res = dwarf_siblingof(dwarf, current_die, &sibling_die, &error);
-      if (res == DW_DLV_ERROR) {
+      if (res == DW_DLV_ERROR)
+      {
         return NULL;
-      } else if (res == DW_DLV_NO_ENTRY) {
+      }
+      else if (res == DW_DLV_NO_ENTRY)
+      {
         break;
       }
 
-      if (current_die != parent_die) {
+      if (current_die != parent_die)
+      {
         dwarf_dealloc(dwarf, current_die, DW_DLA_DIE);
         current_die = 0;
       }
@@ -2762,32 +3212,43 @@ private:
 
   template <typename CB>
   static bool deep_first_search_by_pc(dwarf_fileobject& fobj, Dwarf_Die parent_die, Dwarf_Addr pc,
-                                      std::vector<std::string>& ns, CB cb) {
+                                      std::vector<std::string>& ns, CB cb)
+  {
     Dwarf_Die current_die = 0;
     Dwarf_Debug dwarf = fobj.dwarf_handle.get();
     Dwarf_Error error = DW_DLE_NE;
 
-    if (dwarf_child(parent_die, &current_die, &error) != DW_DLV_OK) {
+    if (dwarf_child(parent_die, &current_die, &error) != DW_DLV_OK)
+    {
       return false;
     }
 
     bool branch_has_pc = false;
     bool has_namespace = false;
-    for (;;) {
+    for (;;)
+    {
       Dwarf_Die sibling_die = 0;
 
       Dwarf_Half tag;
-      if (dwarf_tag(current_die, &tag, &error) == DW_DLV_OK) {
-        if (tag == DW_TAG_namespace || tag == DW_TAG_class_type) {
+      if (dwarf_tag(current_die, &tag, &error) == DW_DLV_OK)
+      {
+        if (tag == DW_TAG_namespace || tag == DW_TAG_class_type)
+        {
           char* ns_name = NULL;
-          if (dwarf_diename(current_die, &ns_name, &error) == DW_DLV_OK) {
-            if (ns_name) {
+          if (dwarf_diename(current_die, &ns_name, &error) == DW_DLV_OK)
+          {
+            if (ns_name)
+            {
               ns.push_back(std::string(ns_name));
-            } else {
+            }
+            else
+            {
               ns.push_back("<unknown>");
             }
             dwarf_dealloc(dwarf, ns_name, DW_DLA_STRING);
-          } else {
+          }
+          else
+          {
             ns.push_back("<unknown>");
           }
           has_namespace = true;
@@ -2797,15 +3258,18 @@ private:
       bool declaration = false;
       Dwarf_Attribute attr_mem;
       if (tag != DW_TAG_class_type &&
-          dwarf_attr(current_die, DW_AT_declaration, &attr_mem, &error) == DW_DLV_OK) {
+          dwarf_attr(current_die, DW_AT_declaration, &attr_mem, &error) == DW_DLV_OK)
+      {
         Dwarf_Bool flag = 0;
-        if (dwarf_formflag(attr_mem, &flag, &error) == DW_DLV_OK) {
+        if (dwarf_formflag(attr_mem, &flag, &error) == DW_DLV_OK)
+        {
           declaration = flag != 0;
         }
         dwarf_dealloc(dwarf, attr_mem, DW_DLA_ATTR);
       }
 
-      if (!declaration) {
+      if (!declaration)
+      {
         // let's be curious and look deeper in the tree, function are
         // not necessarily at the first level, but might be nested
         // inside a namespace, structure, a function, an inlined
@@ -2813,63 +3277,78 @@ private:
         branch_has_pc = deep_first_search_by_pc(fobj, current_die, pc, ns, cb);
       }
 
-      if (!branch_has_pc) {
+      if (!branch_has_pc)
+      {
         branch_has_pc = die_has_pc(fobj, current_die, pc);
       }
 
-      if (branch_has_pc) {
+      if (branch_has_pc)
+      {
         cb(current_die, ns);
       }
 
       int result = dwarf_siblingof(dwarf, current_die, &sibling_die, &error);
-      if (result == DW_DLV_ERROR) {
+      if (result == DW_DLV_ERROR)
+      {
         return false;
-      } else if (result == DW_DLV_NO_ENTRY) {
+      }
+      else if (result == DW_DLV_NO_ENTRY)
+      {
         break;
       }
 
-      if (current_die != parent_die) {
+      if (current_die != parent_die)
+      {
         dwarf_dealloc(dwarf, current_die, DW_DLA_DIE);
         current_die = 0;
       }
 
-      if (has_namespace) {
+      if (has_namespace)
+      {
         has_namespace = false;
         ns.pop_back();
       }
       current_die = sibling_die;
     }
 
-    if (has_namespace) {
+    if (has_namespace)
+    {
       ns.pop_back();
     }
     return branch_has_pc;
   }
 
-  static std::string die_call_file(Dwarf_Debug dwarf, Dwarf_Die die, Dwarf_Die cu_die) {
+  static std::string die_call_file(Dwarf_Debug dwarf, Dwarf_Die die, Dwarf_Die cu_die)
+  {
     Dwarf_Attribute attr_mem;
     Dwarf_Error error = DW_DLE_NE;
     Dwarf_Signed file_index;
 
     std::string file;
 
-    if (dwarf_attr(die, DW_AT_call_file, &attr_mem, &error) == DW_DLV_OK) {
-      if (dwarf_formsdata(attr_mem, &file_index, &error) != DW_DLV_OK) {
+    if (dwarf_attr(die, DW_AT_call_file, &attr_mem, &error) == DW_DLV_OK)
+    {
+      if (dwarf_formsdata(attr_mem, &file_index, &error) != DW_DLV_OK)
+      {
         file_index = 0;
       }
       dwarf_dealloc(dwarf, attr_mem, DW_DLA_ATTR);
 
-      if (file_index == 0) {
+      if (file_index == 0)
+      {
         return file;
       }
 
       char** srcfiles = 0;
       Dwarf_Signed file_count = 0;
-      if (dwarf_srcfiles(cu_die, &srcfiles, &file_count, &error) == DW_DLV_OK) {
-        if (file_index <= file_count) file = std::string(srcfiles[file_index - 1]);
+      if (dwarf_srcfiles(cu_die, &srcfiles, &file_count, &error) == DW_DLV_OK)
+      {
+        if (file_index <= file_count)
+          file = std::string(srcfiles[file_index - 1]);
 
         // Deallocate all strings!
-        for (int i = 0; i < file_count; ++i) {
+        for (int i = 0; i < file_count; ++i)
+        {
           dwarf_dealloc(dwarf, srcfiles[i], DW_DLA_STRING);
         }
         dwarf_dealloc(dwarf, srcfiles, DW_DLA_LIST);
@@ -2878,7 +3357,8 @@ private:
     return file;
   }
 
-  Dwarf_Die find_die(dwarf_fileobject& fobj, Dwarf_Addr addr) {
+  Dwarf_Die find_die(dwarf_fileobject& fobj, Dwarf_Addr addr)
+  {
     // Let's get to work! First see if we have a debug_aranges section so
     // we can speed up the search
 
@@ -2889,18 +3369,22 @@ private:
 
     Dwarf_Die returnDie;
     bool found = false;
-    if (dwarf_get_aranges(dwarf, &aranges, &arange_count, &error) != DW_DLV_OK) {
+    if (dwarf_get_aranges(dwarf, &aranges, &arange_count, &error) != DW_DLV_OK)
+    {
       aranges = NULL;
     }
 
-    if (aranges) {
+    if (aranges)
+    {
       // We have aranges. Get the one where our address is.
       Dwarf_Arange arange;
-      if (dwarf_get_arange(aranges, arange_count, addr, &arange, &error) == DW_DLV_OK) {
+      if (dwarf_get_arange(aranges, arange_count, addr, &arange, &error) == DW_DLV_OK)
+      {
         // We found our address. Get the compilation-unit DIE offset
         // represented by the given address range.
         Dwarf_Off cu_die_offset;
-        if (dwarf_get_cu_die_offset(arange, &cu_die_offset, &error) == DW_DLV_OK) {
+        if (dwarf_get_cu_die_offset(arange, &cu_die_offset, &error) == DW_DLV_OK)
+        {
           // Get the DIE at the offset returned by the aranges search.
           // We set is_info to 1 to specify that the offset is from
           // the .debug_info section (and not .debug_types)
@@ -2912,7 +3396,8 @@ private:
       }
     }
 
-    if (found) return returnDie;  // The caller is responsible for freeing the die
+    if (found)
+      return returnDie;  // The caller is responsible for freeing the die
 
     // The search for aranges failed. Try to find our address by scanning
     // all compilation units.
@@ -2922,55 +3407,69 @@ private:
 
     while (!found &&
            dwarf_next_cu_header_d(dwarf, 1, 0, 0, 0, 0, 0, 0, 0, 0, &next_cu_header, 0, &error) ==
-               DW_DLV_OK) {
-      if (returnDie) dwarf_dealloc(dwarf, returnDie, DW_DLA_DIE);
+               DW_DLV_OK)
+    {
+      if (returnDie)
+        dwarf_dealloc(dwarf, returnDie, DW_DLA_DIE);
 
-      if (dwarf_siblingof(dwarf, 0, &returnDie, &error) == DW_DLV_OK) {
-        if ((dwarf_tag(returnDie, &tag, &error) == DW_DLV_OK) && tag == DW_TAG_compile_unit) {
-          if (die_has_pc(fobj, returnDie, addr)) {
+      if (dwarf_siblingof(dwarf, 0, &returnDie, &error) == DW_DLV_OK)
+      {
+        if ((dwarf_tag(returnDie, &tag, &error) == DW_DLV_OK) && tag == DW_TAG_compile_unit)
+        {
+          if (die_has_pc(fobj, returnDie, addr))
+          {
             found = true;
           }
         }
       }
     }
 
-    if (found) {
+    if (found)
+    {
       while (dwarf_next_cu_header_d(dwarf, 1, 0, 0, 0, 0, 0, 0, 0, 0, &next_cu_header, 0, &error) ==
-             DW_DLV_OK) {
+             DW_DLV_OK)
+      {
         // Reset the cu header state. Libdwarf's next_cu_header API
         // keeps its own iterator per Dwarf_Debug that can't be reset.
         // We need to keep fetching elements until the end.
       }
     }
 
-    if (found) return returnDie;
+    if (found)
+      return returnDie;
 
     // We couldn't find any compilation units with ranges or a high/low pc.
     // Try again by looking at all DIEs in all compilation units.
     Dwarf_Die cudie;
     while (dwarf_next_cu_header_d(dwarf, 1, 0, 0, 0, 0, 0, 0, 0, 0, &next_cu_header, 0, &error) ==
-           DW_DLV_OK) {
-      if (dwarf_siblingof(dwarf, 0, &cudie, &error) == DW_DLV_OK) {
+           DW_DLV_OK)
+    {
+      if (dwarf_siblingof(dwarf, 0, &cudie, &error) == DW_DLV_OK)
+      {
         Dwarf_Die die_mem = 0;
         Dwarf_Die resultDie = find_fundie_by_pc(fobj, cudie, addr, die_mem);
 
-        if (resultDie) {
+        if (resultDie)
+        {
           found = true;
           break;
         }
       }
     }
 
-    if (found) {
+    if (found)
+    {
       while (dwarf_next_cu_header_d(dwarf, 1, 0, 0, 0, 0, 0, 0, 0, 0, &next_cu_header, 0, &error) ==
-             DW_DLV_OK) {
+             DW_DLV_OK)
+      {
         // Reset the cu header state. Libdwarf's next_cu_header API
         // keeps its own iterator per Dwarf_Debug that can't be reset.
         // We need to keep fetching elements until the end.
       }
     }
 
-    if (found) return cudie;
+    if (found)
+      return cudie;
 
     // We failed.
     return NULL;
@@ -2980,7 +3479,9 @@ private:
 
 template <>
 class TraceResolverImpl<system_tag::linux_tag>
-    : public TraceResolverLinuxImpl<trace_resolver_tag::current> {};
+  : public TraceResolverLinuxImpl<trace_resolver_tag::current>
+{
+};
 
 #endif  // BACKWARD_SYSTEM_LINUX
 
@@ -2990,18 +3491,22 @@ template <typename STACKTRACE_TAG>
 class TraceResolverDarwinImpl;
 
 template <>
-class TraceResolverDarwinImpl<trace_resolver_tag::backtrace_symbol> : public TraceResolverImplBase {
+class TraceResolverDarwinImpl<trace_resolver_tag::backtrace_symbol> : public TraceResolverImplBase
+{
 public:
   template <class ST>
-  void load_stacktrace(ST& st) {
+  void load_stacktrace(ST& st)
+  {
     using namespace details;
-    if (st.size() == 0) {
+    if (st.size() == 0)
+    {
       return;
     }
     _symbols.reset(backtrace_symbols(st.begin(), st.size()));
   }
 
-  ResolvedTrace resolve(ResolvedTrace trace) {
+  ResolvedTrace resolve(ResolvedTrace trace)
+  {
     // parse:
     // <n>  <file>  <addr>  <mangled-name> + <offset>
     char* filename = _symbols[trace.idx];
@@ -3040,7 +3545,8 @@ public:
 
     // skip "<file>", handling the case where it contains a
     char* filename_end = p + 1;
-    if (p == filename) {
+    if (p == filename)
+    {
       // something went wrong, give up
       filename_end = filename + strlen(filename);
       funcname = filename_end;
@@ -3051,7 +3557,8 @@ public:
                                                            // assign entire
                                                            // string)
 
-    if (*funcname) {  // if it's not end of string
+    if (*funcname)
+    {  // if it's not end of string
       *funcname_end = '\0';
 
       trace.object_function = this->demangle(funcname);
@@ -3068,27 +3575,37 @@ private:
 
 template <>
 class TraceResolverImpl<system_tag::darwin_tag>
-    : public TraceResolverDarwinImpl<trace_resolver_tag::current> {};
+  : public TraceResolverDarwinImpl<trace_resolver_tag::current>
+{
+};
 
 #endif  // BACKWARD_SYSTEM_DARWIN
 
-class TraceResolver : public TraceResolverImpl<system_tag::current_tag> {};
+class TraceResolver : public TraceResolverImpl<system_tag::current_tag>
+{
+};
 
 /*************** CODE SNIPPET ***************/
 
-class SourceFile {
+class SourceFile
+{
 public:
   typedef std::vector<std::pair<unsigned, std::string>> lines_t;
 
-  SourceFile() {
+  SourceFile()
+  {
   }
-  SourceFile(const std::string& path) : _file(new std::ifstream(path.c_str())) {
+  SourceFile(const std::string& path)
+    : _file(new std::ifstream(path.c_str()))
+  {
   }
-  bool is_open() const {
+  bool is_open() const
+  {
     return _file->is_open();
   }
 
-  lines_t& get_lines(unsigned line_start, unsigned line_count, lines_t& lines) {
+  lines_t& get_lines(unsigned line_start, unsigned line_count, lines_t& lines)
+  {
     using namespace std;
     // This function make uses of the dumbest algo ever:
     //	1) seek(0)
@@ -3104,9 +3621,11 @@ public:
     string line;
     unsigned line_idx;
 
-    for (line_idx = 1; line_idx < line_start; ++line_idx) {
+    for (line_idx = 1; line_idx < line_start; ++line_idx)
+    {
       std::getline(*_file, line);
-      if (!*_file) {
+      if (!*_file)
+      {
         return lines;
       }
     }
@@ -3114,20 +3633,26 @@ public:
     // think of it like a lambda in C++98 ;)
     // but look, I will reuse it two times!
     // What a good boy am I.
-    struct isspace {
-      bool operator()(char c) {
+    struct isspace
+    {
+      bool operator()(char c)
+      {
         return std::isspace(c);
       }
     };
 
     bool started = false;
-    for (; line_idx < line_start + line_count; ++line_idx) {
+    for (; line_idx < line_start + line_count; ++line_idx)
+    {
       getline(*_file, line);
-      if (!*_file) {
+      if (!*_file)
+      {
         return lines;
       }
-      if (!started) {
-        if (std::find_if(line.begin(), line.end(), not_isspace()) == line.end()) continue;
+      if (!started)
+      {
+        if (std::find_if(line.begin(), line.end(), not_isspace()) == line.end())
+          continue;
         started = true;
       }
       lines.push_back(make_pair(line_idx, line));
@@ -3137,44 +3662,55 @@ public:
     return lines;
   }
 
-  lines_t get_lines(unsigned line_start, unsigned line_count) {
+  lines_t get_lines(unsigned line_start, unsigned line_count)
+  {
     lines_t lines;
     return get_lines(line_start, line_count, lines);
   }
 
   // there is no find_if_not in C++98, lets do something crappy to
   // workaround.
-  struct not_isspace {
-    bool operator()(char c) {
+  struct not_isspace
+  {
+    bool operator()(char c)
+    {
       return !std::isspace(c);
     }
   };
   // and define this one here because C++98 is not happy with local defined
   // struct passed to template functions, fuuuu.
-  struct not_isempty {
-    bool operator()(const lines_t::value_type& p) {
+  struct not_isempty
+  {
+    bool operator()(const lines_t::value_type& p)
+    {
       return !(std::find_if(p.second.begin(), p.second.end(), not_isspace()) == p.second.end());
     }
   };
 
-  void swap(SourceFile& b) {
+  void swap(SourceFile& b)
+  {
     _file.swap(b._file);
   }
 
 #ifdef BACKWARD_ATLEAST_CXX11
-  SourceFile(SourceFile&& from) : _file(nullptr) {
+  SourceFile(SourceFile&& from)
+    : _file(nullptr)
+  {
     swap(from);
   }
-  SourceFile& operator=(SourceFile&& from) {
+  SourceFile& operator=(SourceFile&& from)
+  {
     swap(from);
     return *this;
   }
 #else
-  explicit SourceFile(const SourceFile& from) {
+  explicit SourceFile(const SourceFile& from)
+  {
     // some sort of poor man's move semantic.
     swap(const_cast<SourceFile&>(from));
   }
-  SourceFile& operator=(const SourceFile& from) {
+  SourceFile& operator=(const SourceFile& from)
+  {
     // some sort of poor man's move semantic.
     swap(const_cast<SourceFile&>(from));
     return *this;
@@ -3190,18 +3726,21 @@ private:
 #endif
 };
 
-class SnippetFactory {
+class SnippetFactory
+{
 public:
   typedef SourceFile::lines_t lines_t;
 
-  lines_t get_snippet(const std::string& filename, unsigned line_start, unsigned context_size) {
+  lines_t get_snippet(const std::string& filename, unsigned line_start, unsigned context_size)
+  {
     SourceFile& src_file = get_src_file(filename);
     unsigned start = line_start - context_size / 2;
     return src_file.get_lines(start, context_size);
   }
 
   lines_t get_combined_snippet(const std::string& filename_a, unsigned line_a,
-                               const std::string& filename_b, unsigned line_b, unsigned context_size) {
+                               const std::string& filename_b, unsigned line_b, unsigned context_size)
+  {
     SourceFile& src_file_a = get_src_file(filename_a);
     SourceFile& src_file_b = get_src_file(filename_b);
 
@@ -3211,15 +3750,17 @@ public:
   }
 
   lines_t get_coalesced_snippet(const std::string& filename, unsigned line_a, unsigned line_b,
-                                unsigned context_size) {
+                                unsigned context_size)
+  {
     SourceFile& src_file = get_src_file(filename);
 
-    using std::min;
     using std::max;
+    using std::min;
     unsigned a = min(line_a, line_b);
     unsigned b = max(line_a, line_b);
 
-    if ((b - a) < (context_size / 3)) {
+    if ((b - a) < (context_size / 3))
+    {
       return src_file.get_lines((a + b - context_size + 1) / 2, context_size);
     }
 
@@ -3232,9 +3773,11 @@ private:
   typedef details::hashtable<std::string, SourceFile>::type src_files_t;
   src_files_t _src_files;
 
-  SourceFile& get_src_file(const std::string& filename) {
+  SourceFile& get_src_file(const std::string& filename)
+  {
     src_files_t::iterator it = _src_files.find(filename);
-    if (it != _src_files.end()) {
+    if (it != _src_files.end())
+    {
       return it->second;
     }
     SourceFile& new_src_file = _src_files[filename];
@@ -3245,25 +3788,38 @@ private:
 
 /*************** PRINTER ***************/
 
-namespace ColorMode {
-enum type { automatic, never, always };
+namespace ColorMode
+{
+enum type
+{
+  automatic,
+  never,
+  always
+};
 }
 
-class cfile_streambuf : public std::streambuf {
+class cfile_streambuf : public std::streambuf
+{
 public:
-  cfile_streambuf(FILE* _sink) : sink(_sink) {
+  cfile_streambuf(FILE* _sink)
+    : sink(_sink)
+  {
   }
-  int_type underflow() override {
+  int_type underflow() override
+  {
     return traits_type::eof();
   }
-  int_type overflow(int_type ch) override {
-    if (traits_type::not_eof(ch) && fwrite(&ch, sizeof ch, 1, sink) == 1) {
+  int_type overflow(int_type ch) override
+  {
+    if (traits_type::not_eof(ch) && fwrite(&ch, sizeof ch, 1, sink) == 1)
+    {
       return ch;
     }
     return traits_type::eof();
   }
 
-  std::streamsize xsputn(const char_type* s, std::streamsize count) override {
+  std::streamsize xsputn(const char_type* s, std::streamsize count) override
+  {
     return static_cast<std::streamsize>(fwrite(s, sizeof *s, static_cast<size_t>(count), sink));
   }
 
@@ -3284,25 +3840,38 @@ private:
 
 #ifdef BACKWARD_SYSTEM_LINUX
 
-namespace Color {
-enum type { yellow = 33, purple = 35, reset = 39 };
+namespace Color
+{
+enum type
+{
+  yellow = 33,
+  purple = 35,
+  reset = 39
+};
 }  // namespace Color
 
-class Colorize {
+class Colorize
+{
 public:
-  Colorize(std::ostream& os) : _os(os), _reset(false), _enabled(false) {
+  Colorize(std::ostream& os)
+    : _os(os), _reset(false), _enabled(false)
+  {
   }
 
-  void activate(ColorMode::type mode) {
+  void activate(ColorMode::type mode)
+  {
     _enabled = mode == ColorMode::always;
   }
 
-  void activate(ColorMode::type mode, FILE* fp) {
+  void activate(ColorMode::type mode, FILE* fp)
+  {
     activate(mode, fileno(fp));
   }
 
-  void set_color(Color::type ccode) {
-    if (!_enabled) return;
+  void set_color(Color::type ccode)
+  {
+    if (!_enabled)
+      return;
 
     // I assume that the terminal can handle basic colors. Seriously I
     // don't want to deal with all the termcap shit.
@@ -3310,14 +3879,17 @@ public:
     _reset = (ccode != Color::reset);
   }
 
-  ~Colorize() {
-    if (_reset) {
+  ~Colorize()
+  {
+    if (_reset)
+    {
       set_color(Color::reset);
     }
   }
 
 private:
-  void activate(ColorMode::type mode, int fd) {
+  void activate(ColorMode::type mode, int fd)
+  {
     activate(mode == ColorMode::automatic && isatty(fd) ? ColorMode::always : mode);
   }
 
@@ -3328,25 +3900,37 @@ private:
 
 #else  // ndef BACKWARD_SYSTEM_LINUX
 
-namespace Color {
-enum type { yellow = 0, purple = 0, reset = 0 };
+namespace Color
+{
+enum type
+{
+  yellow = 0,
+  purple = 0,
+  reset = 0
+};
 }  // namespace Color
 
-class Colorize {
+class Colorize
+{
 public:
-  Colorize(std::ostream&) {
+  Colorize(std::ostream&)
+  {
   }
-  void activate(ColorMode::type) {
+  void activate(ColorMode::type)
+  {
   }
-  void activate(ColorMode::type, FILE*) {
+  void activate(ColorMode::type, FILE*)
+  {
   }
-  void set_color(Color::type) {
+  void set_color(Color::type)
+  {
   }
 };
 
 #endif  // BACKWARD_SYSTEM_LINUX
 
-class Printer {
+class Printer
+{
 public:
   bool snippet;
   ColorMode::type color_mode;
@@ -3361,11 +3945,13 @@ public:
     , address(false)
     , object(false)
     , inliner_context_size(5)
-    , trace_context_size(7) {
+    , trace_context_size(7)
+  {
   }
 
   template <typename ST>
-  FILE* print(ST& st, FILE* fp = stderr) {
+  FILE* print(ST& st, FILE* fp = stderr)
+  {
     cfile_streambuf obuf(fp);
     std::ostream os(&obuf);
     Colorize colorize(os);
@@ -3375,7 +3961,8 @@ public:
   }
 
   template <typename ST>
-  std::ostream& print(ST& st, std::ostream& os) {
+  std::ostream& print(ST& st, std::ostream& os)
+  {
     Colorize colorize(os);
     colorize.activate(color_mode);
     print_stacktrace(st, os, colorize);
@@ -3383,7 +3970,8 @@ public:
   }
 
   template <typename IT>
-  FILE* print(IT begin, IT end, FILE* fp = stderr, size_t thread_id = 0) {
+  FILE* print(IT begin, IT end, FILE* fp = stderr, size_t thread_id = 0)
+  {
     cfile_streambuf obuf(fp);
     std::ostream os(&obuf);
     Colorize colorize(os);
@@ -3393,7 +3981,8 @@ public:
   }
 
   template <typename IT>
-  std::ostream& print(IT begin, IT end, std::ostream& os, size_t thread_id = 0) {
+  std::ostream& print(IT begin, IT end, std::ostream& os, size_t thread_id = 0)
+  {
     Colorize colorize(os);
     colorize.activate(color_mode);
     print_stacktrace(begin, end, os, thread_id, colorize);
@@ -3405,91 +3994,113 @@ private:
   SnippetFactory _snippets;
 
   template <typename ST>
-  void print_stacktrace(ST& st, std::ostream& os, Colorize& colorize) {
+  void print_stacktrace(ST& st, std::ostream& os, Colorize& colorize)
+  {
     print_header(os, st.thread_id());
     _resolver.load_stacktrace(st);
-    for (size_t trace_idx = st.size(); trace_idx > 0; --trace_idx) {
+    for (size_t trace_idx = st.size(); trace_idx > 0; --trace_idx)
+    {
       print_trace(os, _resolver.resolve(st[trace_idx - 1]), colorize);
     }
   }
 
   template <typename IT>
-  void print_stacktrace(IT begin, IT end, std::ostream& os, size_t thread_id, Colorize& colorize) {
+  void print_stacktrace(IT begin, IT end, std::ostream& os, size_t thread_id, Colorize& colorize)
+  {
     print_header(os, thread_id);
-    for (; begin != end; ++begin) {
+    for (; begin != end; ++begin)
+    {
       print_trace(os, *begin, colorize);
     }
   }
 
-  void print_header(std::ostream& os, size_t thread_id) {
+  void print_header(std::ostream& os, size_t thread_id)
+  {
     os << "Stack trace (most recent call last)";
-    if (thread_id) {
+    if (thread_id)
+    {
       os << " in thread " << thread_id;
     }
     os << ":\n";
   }
 
-  void print_trace(std::ostream& os, const ResolvedTrace& trace, Colorize& colorize) {
+  void print_trace(std::ostream& os, const ResolvedTrace& trace, Colorize& colorize)
+  {
     os << "#" << std::left << std::setw(2) << trace.idx << std::right;
     bool already_indented = true;
 
-    if (!trace.source.filename.size() || object) {
+    if (!trace.source.filename.size() || object)
+    {
       os << "   Object \"" << trace.object_filename << "\", at " << trace.addr << ", in "
          << trace.object_function << "\n";
       already_indented = false;
     }
 
-    for (size_t inliner_idx = trace.inliners.size(); inliner_idx > 0; --inliner_idx) {
-      if (!already_indented) {
+    for (size_t inliner_idx = trace.inliners.size(); inliner_idx > 0; --inliner_idx)
+    {
+      if (!already_indented)
+      {
         os << "   ";
       }
       const ResolvedTrace::SourceLoc& inliner_loc = trace.inliners[inliner_idx - 1];
       print_source_loc(os, " | ", inliner_loc);
-      if (snippet) {
+      if (snippet)
+      {
         print_snippet(os, "    | ", inliner_loc, colorize, Color::purple, inliner_context_size);
       }
       already_indented = false;
     }
 
-    if (trace.source.filename.size()) {
-      if (!already_indented) {
+    if (trace.source.filename.size())
+    {
+      if (!already_indented)
+      {
         os << "   ";
       }
       print_source_loc(os, "   ", trace.source, trace.addr);
-      if (snippet) {
+      if (snippet)
+      {
         print_snippet(os, "      ", trace.source, colorize, Color::yellow, trace_context_size);
       }
     }
   }
 
   void print_snippet(std::ostream& os, const char* indent, const ResolvedTrace::SourceLoc& source_loc,
-                     Colorize& colorize, Color::type color_code, int context_size) {
+                     Colorize& colorize, Color::type color_code, int context_size)
+  {
     using namespace std;
     typedef SnippetFactory::lines_t lines_t;
 
     lines_t lines =
         _snippets.get_snippet(source_loc.filename, source_loc.line, static_cast<unsigned>(context_size));
 
-    for (lines_t::const_iterator it = lines.begin(); it != lines.end(); ++it) {
-      if (it->first == source_loc.line) {
+    for (lines_t::const_iterator it = lines.begin(); it != lines.end(); ++it)
+    {
+      if (it->first == source_loc.line)
+      {
         colorize.set_color(color_code);
         os << indent << ">";
-      } else {
+      }
+      else
+      {
         os << indent << " ";
       }
       os << std::setw(4) << it->first << ": " << it->second << "\n";
-      if (it->first == source_loc.line) {
+      if (it->first == source_loc.line)
+      {
         colorize.set_color(Color::reset);
       }
     }
   }
 
   void print_source_loc(std::ostream& os, const char* indent, const ResolvedTrace::SourceLoc& source_loc,
-                        void* addr = nullptr) {
+                        void* addr = nullptr)
+  {
     os << indent << "Source \"" << source_loc.filename << "\", line " << source_loc.line << ", in "
        << source_loc.function;
 
-    if (address && addr != nullptr) {
+    if (address && addr != nullptr)
+    {
       os << " [" << addr << "]";
     }
     os << "\n";
@@ -3500,9 +4111,11 @@ private:
 
 #if defined(BACKWARD_SYSTEM_LINUX) || defined(BACKWARD_SYSTEM_DARWIN)
 
-class SignalHandling {
+class SignalHandling
+{
 public:
-  static std::vector<int> make_default_signals() {
+  static std::vector<int> make_default_signals()
+  {
     const int posix_signals[] = {
       // Signals for which the default action is "Core".
       SIGABRT,  // Abort signal from abort(3)
@@ -3524,24 +4137,31 @@ public:
                             posix_signals + sizeof posix_signals / sizeof posix_signals[0]);
   }
 
-  SignalHandling(const std::vector<int>& posix_signals = make_default_signals()) : _loaded(false) {
+  SignalHandling(const std::vector<int>& posix_signals = make_default_signals())
+    : _loaded(false)
+  {
     bool success = true;
 
     const size_t stack_size = 1024 * 1024 * 8;
     _stack_content.reset(static_cast<char*>(malloc(stack_size)));
-    if (_stack_content) {
+    if (_stack_content)
+    {
       stack_t ss;
       ss.ss_sp = _stack_content.get();
       ss.ss_size = stack_size;
       ss.ss_flags = 0;
-      if (sigaltstack(&ss, nullptr) < 0) {
+      if (sigaltstack(&ss, nullptr) < 0)
+      {
         success = false;
       }
-    } else {
+    }
+    else
+    {
       success = false;
     }
 
-    for (size_t i = 0; i < posix_signals.size(); ++i) {
+    for (size_t i = 0; i < posix_signals.size(); ++i)
+    {
       struct sigaction action;
       memset(&action, 0, sizeof action);
       action.sa_flags = static_cast<int>(SA_SIGINFO | SA_ONSTACK | SA_NODEFER | SA_RESETHAND);
@@ -3557,17 +4177,20 @@ public:
 #endif
 
       int r = sigaction(posix_signals[i], &action, nullptr);
-      if (r < 0) success = false;
+      if (r < 0)
+        success = false;
     }
 
     _loaded = success;
   }
 
-  bool loaded() const {
+  bool loaded() const
+  {
     return _loaded;
   }
 
-  static void handleSignal(int, siginfo_t* info, void* _ctx) {
+  static void handleSignal(int, siginfo_t* info, void* _ctx)
+  {
     ucontext_t* uctx = static_cast<ucontext_t*>(_ctx);
 
     StackTrace st;
@@ -3591,9 +4214,12 @@ public:
 #else
 #warning ":/ sorry, ain't know no nothing none not of your architecture!"
 #endif
-    if (error_addr) {
+    if (error_addr)
+    {
       st.load_from(error_addr, 32);
-    } else {
+    }
+    else
+    {
       st.load_here(32);
     }
 
@@ -3616,7 +4242,8 @@ private:
   __attribute__((noreturn))
 #endif
   static void
-  sig_handler(int signo, siginfo_t* info, void* _ctx) {
+  sig_handler(int signo, siginfo_t* info, void* _ctx)
+  {
     handleSignal(signo, info, _ctx);
 
     // try to forward the signal.
@@ -3632,14 +4259,18 @@ private:
 
 #ifdef BACKWARD_SYSTEM_UNKNOWN
 
-class SignalHandling {
+class SignalHandling
+{
 public:
-  SignalHandling(const std::vector<int>& = std::vector<int>()) {
+  SignalHandling(const std::vector<int>& = std::vector<int>())
+  {
   }
-  bool init() {
+  bool init()
+  {
     return false;
   }
-  bool loaded() {
+  bool loaded()
+  {
     return false;
   }
 };

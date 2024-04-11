@@ -9,7 +9,7 @@ cam0_calib: "left.yaml"
 cam1_calib: "right.yaml"
 image_width: 640
 image_height: 480
-   
+
 
 # Extrinsic parameters.
 
@@ -35,12 +35,12 @@ body_T_cam1: !!opencv-matrix
        -2.6475808078669782e-03, 5.5405312181787035e-02, 0., 0., 0., 1. ]
 
 
-max_freq: 20                # max frequency of processing image 
+max_freq: 20                # max frequency of processing image
 
 #feature traker paprameters
 max_cnt: 180                # max feature number in feature tracking
 min_cnt: 20                 # min feature number in feature tracking
-min_dist: 30                # min distance between two features 
+min_dist: 30                # min distance between two features
 
 translation_threshold: 0.05 # min translation to switch key frame
 rotation_threshold: 0.05    # min rotation to switch key frame

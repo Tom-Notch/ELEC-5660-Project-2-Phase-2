@@ -1,7 +1,7 @@
 version: "3"
 
 services:
-    elec-5660-project-2-phase-1:
+    elec-5660-project-2-phase-2:
         build:
             dockerfile: ./docker/${IMAGE_TAG}/Dockerfile
             x-bake:

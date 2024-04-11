@@ -8,30 +8,30 @@
 namespace camodocal
 {
 
-template<class T>
+template <class T>
 const T clamp(const T& v, const T& a, const T& b)
 {
-	return std::min(b, std::max(a, v));
+  return std::min(b, std::max(a, v));
 }
 
 double hypot3(double x, double y, double z);
 float hypot3f(float x, float y, float z);
 
-template<class T>
+template <class T>
 const T normalizeTheta(const T& theta)
 {
-	T normTheta = theta;
+  T normTheta = theta;
 
-	while (normTheta < - M_PI)
-	{
-		normTheta += 2.0 * M_PI;
-	}
-	while (normTheta > M_PI)
-	{
-		normTheta -= 2.0 * M_PI;
-	}
+  while (normTheta < -M_PI)
+  {
+    normTheta += 2.0 * M_PI;
+  }
+  while (normTheta > M_PI)
+  {
+    normTheta -= 2.0 * M_PI;
+  }
 
-	return normTheta;
+  return normTheta;
 }
 
 double d2r(double deg);
@@ -41,40 +41,39 @@ float r2d(float rad);
 
 double sinc(double theta);
 
-template<class T>
+template <class T>
 const T square(const T& x)
 {
-	return x * x;
+  return x * x;
 }
 
-template<class T>
+template <class T>
 const T cube(const T& x)
 {
-	return x * x * x;
+  return x * x * x;
 }
 
-template<class T>
+template <class T>
 const T random(const T& a, const T& b)
 {
-	return static_cast<double>(rand()) / RAND_MAX * (b - a) + a;
+  return static_cast<double>(rand()) / RAND_MAX * (b - a) + a;
 }
 
-template<class T>
+template <class T>
 const T randomNormal(const T& sigma)
 {
-    T x1, x2, w;
+  T x1, x2, w;
 
-    do
-    {
-        x1 = 2.0 * random(0.0, 1.0) - 1.0;
-        x2 = 2.0 * random(0.0, 1.0) - 1.0;
-        w = x1 * x1 + x2 * x2;
-    }
-    while (w >= 1.0 || w == 0.0);
+  do
+  {
+    x1 = 2.0 * random(0.0, 1.0) - 1.0;
+    x2 = 2.0 * random(0.0, 1.0) - 1.0;
+    w = x1 * x1 + x2 * x2;
+  } while (w >= 1.0 || w == 0.0);
 
-    w = sqrt((-2.0 * log(w)) / w);
+  w = sqrt((-2.0 * log(w)) / w);
 
-    return x1 * w * sigma;
+  return x1 * w * sigma;
 }
 
 unsigned long long timeInMicroseconds(void);
@@ -106,6 +105,6 @@ void UTMtoLL(double utmNorthing, double utmEasting,
 
 long int timestampDiff(uint64_t t1, uint64_t t2);
 
-}
+}  // namespace camodocal
 
 #endif
