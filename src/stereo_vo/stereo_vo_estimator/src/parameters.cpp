@@ -36,7 +36,7 @@ void readParameters(std::string config_file)
   FILE* fh = fopen(config_file.c_str(), "r");
   if (fh == NULL)
   {
-    ROS_WARN("config_file dosen't exist; wrong config_file path");
+    ROS_WARN("config_file doesn't exist; wrong config_file path");
     ROS_BREAK();
     return;
   }
