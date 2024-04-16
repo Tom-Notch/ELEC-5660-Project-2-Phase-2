@@ -4,4 +4,6 @@
 
     <node name="rosbag" pkg="rosbag" type="play" respawn="false" args="--delay=1 --queue=1000 $(find stereo_vo)/bag/realsense_1.bag" />
 
+    <node type="rviz" name="rviz" pkg="rviz" args="-d $(find stereo_vo)/config/stereo.rviz" />
+
 </launch>

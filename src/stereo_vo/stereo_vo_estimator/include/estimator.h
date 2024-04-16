@@ -59,6 +59,7 @@ public:
 
   bool trackFeatureLeftRight(const cv::Mat& _img, const cv::Mat& _img1, vector<cv::Point2f>& left_pts,
                              vector<cv::Point2f>& right_pts);
+
   void generate3dPoints(const vector<cv::Point2f>& left_pts, const vector<cv::Point2f>& right_pts,
                         vector<cv::Point3f>& cur_pts_3d, vector<cv::Point2f>& cur_pts_2d);
 
@@ -81,6 +82,8 @@ public:
 
   const cv::Mat visualizeTracking(const cv::Mat& left_img, const cv::Mat& right_img, const vector<cv::Point2f>& left_pts, const vector<cv::Point2f>& right_pts) const;
 
+  const Matrix4d SE3_from_R_t(const Matrix3d R, const Vector3d t);
+
   frame key_frame;   // keyframe used for frame to frame pose estimation
   frame prev_frame;  // previous frame, may be useful when the current keyframe is not good for estimation
 
@@ -93,6 +96,7 @@ public:
   Matrix4d Tlr;     // transform from the left camera to the right camera
 
   vector<camodocal::CameraPtr> m_camera;
+  cv::Mat m_left_camera_intrinsic_matrix;
 
   ros::Time latest_time, rel_key_time;  // the time of the current frame and the time of the key frame.
 

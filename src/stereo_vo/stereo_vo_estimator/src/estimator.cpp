@@ -60,6 +60,17 @@ void Estimator::setParameter()
 
 void Estimator::readIntrinsicParameter(const vector<string>& calib_file)
 {
+  // ! I have to do this because camodocal::Camera does not have access function for intrinsics matrix...
+  this->m_left_camera_intrinsic_matrix = cv::Mat_<double>(3, 3);
+  cv::FileStorage fs(calib_file[0], cv::FileStorage::READ);
+
+  const double& fx = fs["projection_parameters"]["fx"];
+  const double& fy = fs["projection_parameters"]["fy"];
+  const double& cx = fs["projection_parameters"]["cx"];
+  const double& cy = fs["projection_parameters"]["cy"];
+
+  this->m_left_camera_intrinsic_matrix = (cv::Mat_<double>(3, 3) << fx, 0, cx, 0, fy, cy, 0, 0, 1);
+
   for (size_t i = 0; i < calib_file.size(); i++)
   {
     ROS_INFO("reading parameter of camera %s", calib_file[i].c_str());
@@ -93,20 +104,45 @@ bool Estimator::inputImage(ros::Time time_stamp, const cv::Mat& _img, const cv::
   if (init_finish)
   {
     // To do: match features between the key frame and the current left image
-    this->trackFeatureBetweenFrames(key_frame, cur_frame.img, key_pts_3d, cur_frame.uv);
+    this->trackFeatureBetweenFrames(key_frame, cur_frame.img, key_pts_3d, left_pts_2d);
 
     // To do: undistort the points of the left image and compute relative motion with the key frame.
-    cur_frame.uv = this->undistortedPts(cur_frame.uv, m_camera[0]);
-    this->estimateTBetweenFrames(key_pts_3d, cur_frame.uv, c_R_k, c_t_k);
+    left_pts_2d = this->undistortedPts(left_pts_2d, m_camera[0]);
+    this->estimateTBetweenFrames(key_pts_3d, left_pts_2d, c_R_k, c_t_k);
+    left_pts_2d.clear();
   }
 
   // To do: extract new features for the current frame.
-  this->trackFeatureLeftRight(prev_frame.img, cur_frame.img, left_pts_2d, right_pts_2d);
+  this->extractNewFeatures(_img, cur_frame.uv);
 
   // To do: compute the camera pose of the current frame.
+  if (init_finish)
+  {
+    const Matrix4d& w_T_key_frame_c = SE3_from_R_t(key_frame.w_R_c, key_frame.w_t_c);
+    const Matrix4d& k_T_cur_frame_c = SE3_from_R_t(c_R_k, c_t_k);
+    const Matrix4d& w_T_cur_frame_c = w_T_key_frame_c * k_T_cur_frame_c;
+    cur_frame.w_R_c = w_T_cur_frame_c.block<3, 3>(0, 0);
+    cur_frame.w_t_c = w_T_cur_frame_c.block<3, 1>(0, 3);
+
+    // ROS_INFO_STREAM("cur_frame.w_R_c: " << endl
+    //                                     << cur_frame.w_R_c);
+    // ROS_INFO_STREAM("cur_frame.w_t_c: " << endl
+    //                                     << cur_frame.w_t_c);
+  }
+  else
+  {
+    cur_frame.w_R_c = c_R_k;
+    cur_frame.w_t_c = c_t_k;
+  }
+
+  // ROS_INFO_STREAM("c_T_k: " << endl
+  //                           << c_R_k);
+  // ROS_INFO_STREAM("c_t_k: " << endl
+  //                           << c_t_k);
 
   // To do: undistort the 2d points of the current frame and generate the corresponding 3d points.
-  left_pts_2d = this->undistortedPts(left_pts_2d, m_camera[0]);
+  this->trackFeatureLeftRight(_img, _img1, cur_frame.uv, right_pts_2d);
+  left_pts_2d = this->undistortedPts(cur_frame.uv, m_camera[0]);
   right_pts_2d = this->undistortedPts(right_pts_2d, m_camera[1]);
   this->generate3dPoints(left_pts_2d, right_pts_2d, cur_frame.xyz, cur_frame.uv);
 
@@ -124,6 +160,15 @@ bool Estimator::inputImage(ros::Time time_stamp, const cv::Mat& _img, const cv::
   init_finish = true;
 
   return true;
+}
+
+const Matrix4d Estimator::SE3_from_R_t(const Matrix3d R, const Vector3d t)
+{
+  Matrix4d T;
+  T.setIdentity();
+  T.block<3, 3>(0, 0) = R;
+  T.block<3, 1>(0, 3) = t;
+  return T;
 }
 
 bool Estimator::trackFeatureBetweenFrames(const Estimator::frame& keyframe, const cv::Mat& cur_img,
@@ -181,13 +226,6 @@ bool Estimator::estimateTBetweenFrames(vector<cv::Point3f>& key_pts_3d,
                                        vector<cv::Point2f>& cur_pts_2d, Matrix3d& R, Vector3d& t)
 {
   // To do: calculate relative pose between the key frame and the current frame using the matched 2d-3d points
-  // const auto& camera_param = m_camera[0]->;
-
-  // Camera intrinsic parameters matrix
-  // cv::Mat cameraMatrix = (cv::Mat_<double>(3, 3) << fx, 0, cx,
-  //                                                  0, fy, cy,
-  //                                                  0, 0, 1);
-  cv::Mat cameraMatrix;
 
   // Outputs from solvePnPRansac
   cv::Mat rvec, tvec;
@@ -199,7 +237,7 @@ bool Estimator::estimateTBetweenFrames(vector<cv::Point3f>& key_pts_3d,
   int maxIters = 100;              // Maximum number of iterations
 
   // Call solvePnPRansac without distortion coefficients since keypoints are undistorted
-  bool success = solvePnPRansac(key_pts_3d, cur_pts_2d, cameraMatrix, cv::noArray(),
+  bool success = solvePnPRansac(key_pts_3d, cur_pts_2d, this->m_left_camera_intrinsic_matrix, cv::noArray(),
                                 rvec, tvec, false, maxIters, reprojectionError, confidence, inliers, cv::SOLVEPNP_ITERATIVE);
 
   if (!success || inliers.empty())
@@ -221,6 +259,8 @@ bool Estimator::estimateTBetweenFrames(vector<cv::Point3f>& key_pts_3d,
 void Estimator::extractNewFeatures(const cv::Mat& img, vector<cv::Point2f>& uv)
 {
   // TODO
+  uv.clear();
+
   // Parameters for Shi-Tomasi algorithm
   double qualityLevel = 0.01;
   int blockSize = 3;
@@ -244,11 +284,6 @@ bool Estimator::trackFeatureLeftRight(const cv::Mat& _img, const cv::Mat& _img1,
                                       vector<cv::Point2f>& left_pts, vector<cv::Point2f>& right_pts)
 {
   // TODO: track features left to right frame and obtain corresponding 2D points.
-  this->extractNewFeatures(_img, left_pts);
-
-  right_pts.clear();
-  right_pts.resize(left_pts.size());
-
   vector<uchar> status;
   vector<float> err;
 
@@ -401,6 +436,16 @@ void Estimator::updateLatestStates(frame& latest_frame)
   // latest_P and latest_Q should be the pose of the body (IMU) in the world frame.
   // latest_rel_P and latest_rel_Q should be the relative pose of the current body frame relative to the body frame of the key frame.
   // latest_pointcloud should be in the current camera frame.
+
+  latest_time = latest_frame.frame_time;
+
+  latest_P = latest_frame.w_t_c;
+  latest_Q = Quaterniond(latest_frame.w_R_c);
+
+  latest_rel_P = c_t_k;
+  latest_rel_Q = Quaterniond(c_R_k);
+
+  latest_pointcloud = latest_frame.xyz;
 }
 
 void Estimator::triangulatePoint(Eigen::Matrix<double, 3, 4>& Pose0, Eigen::Matrix<double, 3, 4>& Pose1,
