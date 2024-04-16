@@ -47,11 +47,13 @@ public:
     point_cloud_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("PointCloud", 100);
     rel_pose_pub_ = nh_.advertise<relative_pose>("Relative_pose", 100);
     rel_pose_vis_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("Relative_pose_vis", 100);
+    left_right_tracking_vis_pub_ = nh_.advertise<sensor_msgs::Image>("Left_right_tracking_vis", 1);
   };
 
   void pub_odometry();
   void pub_path();
   void pub_pointcloud();
+  void pub_vis();
 
   void imageCallback(const sensor_msgs::ImageConstPtr& img0, const sensor_msgs::ImageConstPtr& img1);
 
@@ -61,7 +63,7 @@ private:
   message_filters::Subscriber<sensor_msgs::Image> sub_img0_;
   message_filters::Subscriber<sensor_msgs::Image> sub_img1_;
   message_filters::Synchronizer<MySyncPolicy> sync_;
-  ros::Publisher odom_pub_, cam_pose_pub_, path_pub_, point_cloud_pub_, rel_pose_pub_, rel_pose_vis_pub_;
+  ros::Publisher odom_pub_, cam_pose_pub_, path_pub_, point_cloud_pub_, rel_pose_pub_, rel_pose_vis_pub_, left_right_tracking_vis_pub_;
   nav_msgs::Path path_;
   ros::Time image_time_;
 };

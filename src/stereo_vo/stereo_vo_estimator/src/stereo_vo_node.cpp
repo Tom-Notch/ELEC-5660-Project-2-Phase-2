@@ -46,6 +46,8 @@ void stereo_vo::imageCallback(const sensor_msgs::ImageConstPtr& img0,
     pub_odometry();
     pub_path();
     pub_pointcloud();
+    if (SHOW_FEATURE)
+      pub_vis();
   }
   std::cout << "image process time: " << (ros::Time::now() - tic).toSec() << std::endl;
 }
@@ -145,6 +147,10 @@ void stereo_vo::pub_pointcloud()
   point_cloud_pub_.publish(cloud_msg);
 }
 
+void stereo_vo::pub_vis()
+{
+  this->left_right_tracking_vis_pub_.publish(cv_bridge::CvImage(std_msgs::Header(), "bgr8", estimator.left_right_tracking_vis).toImageMsg());
+}
 }  // namespace stereo_vo
 
 int main(int argc, char** argv)

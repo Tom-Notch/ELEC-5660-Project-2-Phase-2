@@ -79,6 +79,8 @@ public:
 
   void updateLatestStates(frame& latest_frame);
 
+  const cv::Mat visualizeTracking(const cv::Mat& left_img, const cv::Mat& right_img, const vector<cv::Point2f>& left_pts, const vector<cv::Point2f>& right_pts) const;
+
   frame key_frame;   // keyframe used for frame to frame pose estimation
   frame prev_frame;  // previous frame, may be useful when the current keyframe is not good for estimation
 
@@ -104,4 +106,6 @@ public:
   Eigen::Quaterniond latest_rel_Q;  // latest relative pose of the current body frame relative to the body frame of the key frame.
 
   vector<cv::Point3f> latest_pointcloud;  // latest point cloud in the current camera frame
+
+  cv::Mat left_right_tracking_vis;  // left-right image visualization
 };

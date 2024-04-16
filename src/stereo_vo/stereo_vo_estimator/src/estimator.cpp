@@ -35,7 +35,7 @@ void Estimator::setParameter()
   {
     tic[i] = TIC[i];
     ric[i] = RIC[i];
-    cout << " exitrinsic cam " << i << endl
+    cout << " extrinsic cam " << i << endl
          << ric[i] << endl
          << tic[i].transpose() << endl;
   }
@@ -62,7 +62,7 @@ void Estimator::readIntrinsicParameter(const vector<string>& calib_file)
 {
   for (size_t i = 0; i < calib_file.size(); i++)
   {
-    ROS_INFO("reading paramerter of camera %s", calib_file[i].c_str());
+    ROS_INFO("reading parameter of camera %s", calib_file[i].c_str());
     camodocal::CameraPtr camera =
         camodocal::CameraFactory::instance()->generateCameraFromYamlFile(calib_file[i]);
     m_camera.push_back(camera);
@@ -93,15 +93,22 @@ bool Estimator::inputImage(ros::Time time_stamp, const cv::Mat& _img, const cv::
   if (init_finish)
   {
     // To do: match features between the key frame and the current left image
+    this->trackFeatureBetweenFrames(key_frame, cur_frame.img, key_pts_3d, cur_frame.uv);
 
     // To do: undistort the points of the left image and compute relative motion with the key frame.
+    cur_frame.uv = this->undistortedPts(cur_frame.uv, m_camera[0]);
+    this->estimateTBetweenFrames(key_pts_3d, cur_frame.uv, c_R_k, c_t_k);
   }
 
   // To do: extract new features for the current frame.
+  this->trackFeatureLeftRight(prev_frame.img, cur_frame.img, left_pts_2d, right_pts_2d);
 
   // To do: compute the camera pose of the current frame.
 
   // To do: undistort the 2d points of the current frame and generate the corresponding 3d points.
+  left_pts_2d = this->undistortedPts(left_pts_2d, m_camera[0]);
+  right_pts_2d = this->undistortedPts(right_pts_2d, m_camera[1]);
+  this->generate3dPoints(left_pts_2d, right_pts_2d, cur_frame.xyz, cur_frame.uv);
 
   // Change key frame
   if (c_t_k.norm() > TRANSLATION_THRESHOLD || acos(Quaterniond(c_R_k).w()) * 2.0 > ROTATION_THRESHOLD || key_pts_3d.size() < FEATURE_THRESHOLD || !init_finish)
@@ -124,6 +131,48 @@ bool Estimator::trackFeatureBetweenFrames(const Estimator::frame& keyframe, cons
                                           vector<cv::Point2f>& cur_pts_2d)
 {
   // To do: track features between the key frame and the current frame to obtain corresponding 2D, 3D points.
+  key_pts_3d.clear();
+  cur_pts_2d.clear();
+
+  const cv::Mat& keyframe_img = keyframe.img;
+
+  const vector<cv::Point2f>& left_pts_2d = keyframe.uv;   // all 2D features in key frame
+  const vector<cv::Point3f>& left_pts_3d = keyframe.xyz;  // all 3D feature points in key frame
+  vector<cv::Point2f> right_pts;
+
+  right_pts.clear();
+  right_pts.resize(left_pts_2d.size());
+
+  vector<uchar> status;
+  vector<float> err;
+
+  calcOpticalFlowPyrLK(keyframe_img,
+                       cur_img,
+                       left_pts_2d,
+                       right_pts,
+                       status,
+                       err,
+                       cv::Size(21, 21),
+                       3,
+                       cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 30, 0.01),
+                       0,
+                       0.001);
+
+  // Filter out the points with bad status
+  for (size_t i = 0; i < status.size(); ++i)
+  {
+    if (status[i])
+    {
+      key_pts_3d.push_back(left_pts_3d[i]);
+      cur_pts_2d.push_back(right_pts[i]);
+    }
+  }
+
+  // Check if there are enough points tracked
+  if (cur_pts_2d.size() < MIN_CNT)
+  {
+    return false;
+  }
 
   return true;
 }
@@ -132,21 +181,158 @@ bool Estimator::estimateTBetweenFrames(vector<cv::Point3f>& key_pts_3d,
                                        vector<cv::Point2f>& cur_pts_2d, Matrix3d& R, Vector3d& t)
 {
   // To do: calculate relative pose between the key frame and the current frame using the matched 2d-3d points
+  // const auto& camera_param = m_camera[0]->;
+
+  // Camera intrinsic parameters matrix
+  // cv::Mat cameraMatrix = (cv::Mat_<double>(3, 3) << fx, 0, cx,
+  //                                                  0, fy, cy,
+  //                                                  0, 0, 1);
+  cv::Mat cameraMatrix;
+
+  // Outputs from solvePnPRansac
+  cv::Mat rvec, tvec;
+  vector<int> inliers;
+
+  // RANSAC parameters
+  float reprojectionError = 3.0f;  // Example reprojection error threshold (in pixels)
+  double confidence = 0.99;        // Confidence level, between 0 and 1
+  int maxIters = 100;              // Maximum number of iterations
+
+  // Call solvePnPRansac without distortion coefficients since keypoints are undistorted
+  bool success = solvePnPRansac(key_pts_3d, cur_pts_2d, cameraMatrix, cv::noArray(),
+                                rvec, tvec, false, maxIters, reprojectionError, confidence, inliers, cv::SOLVEPNP_ITERATIVE);
+
+  if (!success || inliers.empty())
+  {
+    return false;  // solvePnPRansac failed to find a solution or no inliers found
+  }
+
+  // Convert rotation vector to rotation matrix
+  cv::Mat Rmat;
+  cv::Rodrigues(rvec, Rmat);
+
+  // Convert OpenCV Mat to Eigen Matrix
+  cv::cv2eigen(Rmat, R);
+  cv::cv2eigen(tvec, t);
 
   return true;
 }
 
 void Estimator::extractNewFeatures(const cv::Mat& img, vector<cv::Point2f>& uv)
 {
-  // To do: extract the new 2d features of img and store them in uv.
+  // TODO
+  // Parameters for Shi-Tomasi algorithm
+  double qualityLevel = 0.01;
+  int blockSize = 3;
+  bool useHarrisDetector = false;
+  double k = 0.04;
+
+  // Apply corner detection
+  cv::goodFeaturesToTrack(img,
+                          uv,
+                          MAX_CNT,
+                          qualityLevel,
+                          MIN_DIST,
+                          cv::Mat(),  // mask - you could pass a mask here if you want
+                          blockSize,
+                          useHarrisDetector,
+                          k);
+  return;
 }
 
 bool Estimator::trackFeatureLeftRight(const cv::Mat& _img, const cv::Mat& _img1,
                                       vector<cv::Point2f>& left_pts, vector<cv::Point2f>& right_pts)
 {
-  // To do: track features left to right frame and obtain corresponding 2D points.
+  // TODO: track features left to right frame and obtain corresponding 2D points.
+  this->extractNewFeatures(_img, left_pts);
+
+  right_pts.clear();
+  right_pts.resize(left_pts.size());
+
+  vector<uchar> status;
+  vector<float> err;
+
+  // Check if there are enough points to track
+  if (left_pts.size() < MIN_CNT)
+  {
+    return false;
+  }
+
+  calcOpticalFlowPyrLK(_img,
+                       _img1,
+                       left_pts,
+                       right_pts,
+                       status,
+                       err,
+                       cv::Size(21, 21),
+                       3,
+                       cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 30, 0.01),
+                       0,
+                       0.001);
+
+  // Filter out the points with bad status
+  vector<cv::Point2f> left_pts_good;
+  vector<cv::Point2f> right_pts_good;
+  for (size_t i = 0; i < status.size(); ++i)
+  {
+    if (status[i])
+    {
+      left_pts_good.push_back(left_pts[i]);
+      right_pts_good.push_back(right_pts[i]);
+    }
+  }
+
+  // Check if there are enough points tracked
+  if (left_pts_good.size() < MIN_CNT)
+  {
+    return false;
+  }
+
+  left_pts.clear();
+  left_pts = left_pts_good;
+  right_pts.clear();
+  right_pts = right_pts_good;
+
+  if (SHOW_FEATURE)
+  {
+    this->left_right_tracking_vis = visualizeTracking(_img, _img1, left_pts_good, right_pts_good);
+  }
 
   return true;
+}
+
+const cv::Mat Estimator::visualizeTracking(const cv::Mat& left_img, const cv::Mat& right_img, const vector<cv::Point2f>& left_pts, const vector<cv::Point2f>& right_pts) const
+{
+  // Convert grayscale images to RGB
+  cv::Mat left_img_color, right_img_color;
+  cvtColor(left_img, left_img_color, cv::COLOR_GRAY2BGR);
+  cvtColor(right_img, right_img_color, cv::COLOR_GRAY2BGR);
+
+  // Create a large image to hold both the left and right images side by side
+  cv::Mat composite_img(left_img_color.rows, left_img_color.cols + right_img_color.cols, left_img_color.type());
+
+  // Copy left image to the left side of the composite image
+  left_img_color.copyTo(composite_img(cv::Rect(0, 0, left_img_color.cols, left_img_color.rows)));
+
+  // Copy right image to the right side of the composite image
+  right_img_color.copyTo(composite_img(cv::Rect(left_img_color.cols, 0, right_img_color.cols, right_img_color.rows)));
+
+  // Draw lines between corresponding points
+  for (size_t i = 0; i < left_pts.size(); i++)
+  {
+    // Offset the right points by the width of the left image
+    cv::Point2f right_pt_offset = right_pts[i] + cv::Point2f(static_cast<float>(left_img_color.cols), 0.0f);
+
+    // Random color for each line
+    cv::Scalar color = cv::Scalar(rand() % 255, rand() % 255, rand() % 255);
+
+    // Draw line and circles for each correspondence
+    line(composite_img, left_pts[i], right_pt_offset, color);
+    // circle(composite_img, left_pts[i], 5, color, -1);
+    // circle(composite_img, right_pt_offset, 5, color, -1);
+  }
+
+  return composite_img;
 }
 
 void Estimator::generate3dPoints(const vector<cv::Point2f>& left_pts,
